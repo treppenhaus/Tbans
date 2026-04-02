@@ -78,6 +78,10 @@ public class BanManager {
         return null;
     }
 
+    public List<BanEvent> getEvents(String playerName) {
+        return playerEvents.getOrDefault(playerName.toLowerCase(), new ArrayList<>());
+    }
+
     private void loadBans() {
         if (!storageFile.exists())
             return;
