@@ -42,7 +42,7 @@ public class BanPlugin {
                                 new BanCommand(server, banManager, languageManager));
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("unban").build(),
-                                new UnbanCommand(banManager, languageManager));
+                                new UnbanCommand(server, banManager, languageManager));
 
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("history").build(),

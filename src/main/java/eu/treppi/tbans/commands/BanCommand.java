@@ -52,6 +52,10 @@ public class BanCommand implements SimpleCommand {
 
         Optional<Player> targetPlayer = server.getPlayer(targetName);
         if (targetPlayer.isPresent()) {
+            if (targetPlayer.get().hasPermission("tbans.god")) {
+                source.sendMessage(mm.deserialize(languageManager.getMessage("ban.cannot_punish")));
+                return;
+            }
             String disconnectMsg = languageManager.getMessage("ban.disconnect_screen")
                     .replace("{duration}", timeStr)
                     .replace("{reason}", reason);
@@ -66,5 +70,16 @@ public class BanCommand implements SimpleCommand {
                 .replace("{duration}", timeStr)
                 .replace("{reason}", reason);
         source.sendMessage(mm.deserialize(successMsg));
+
+        String broadcastMsg = languageManager.getMessage("ban.broadcast")
+                .replace("{player}", targetName)
+                .replace("{executor}", bannerName)
+                .replace("{duration}", timeStr)
+                .replace("{reason}", reason);
+        for (Player p : server.getAllPlayers()) {
+            if (p.hasPermission("tbans.notify")) {
+                p.sendMessage(mm.deserialize(broadcastMsg));
+            }
+        }
     }
 }

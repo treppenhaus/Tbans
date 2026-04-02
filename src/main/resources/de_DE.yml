@@ -5,6 +5,8 @@ ban:
   usage: "{prefix}<red>Verwendung: /ban <Spieler> <Zeit> <Grund></red>"
   invalid_time: "{prefix}<red>Ungültiges Zeitformat!</red>"
   success: "<gradient:#55ff55:#00aa00><b>ERFOLG</b></gradient> <gray>»</gray> <white>Spieler <yellow>{player}</yellow> wurde für <yellow>{duration}</yellow> gebannt (<gray>{reason}</gray>)</white>"
+  broadcast: "{prefix}<gray>Spieler <red>{player}</red> wurde von <yellow>{executor}</yellow> für <yellow>{duration}</yellow> gebannt (<white>{reason}</white>)</gray>"
+  cannot_punish: "{prefix}<red>Du kannst diesen Spieler nicht bannen!</red>"
   disconnect_screen: "<gradient:#ff5555:#ff0000><b>DU BIST GEBANNT!</b></gradient>\n\n<gray>Dauer: <yellow>{duration}</yellow>\n<gray>Grund: <white>{reason}</white>"
   login_denied: "<gradient:#ff5555:#aa0000><b>DU BIST VON DIESEM NETZWERK GEBANNT!</b></gradient>\n\n<gray>Grund: <yellow>{reason}</yellow>\n<gray>Ablauf: <yellow>{expiry}</yellow>\n<gray>Verbleibende Zeit: <yellow>{left}</yellow>\n\n<gradient:#ffaa00:#ffff55>Entbannung unter domain.com beantragen</gradient>"
 
@@ -12,11 +14,14 @@ unban:
   usage: "{prefix}<red>Verwendung: /unban <Spieler> [Grund]</red>"
   not_banned: "{prefix}<red>Dieser Spieler ist nicht gebannt!</red>"
   success: "<gradient:#55ff55:#00aa00><b>ERFOLG</b></gradient> <gray>»</gray> <white>Spieler <yellow>{player}</yellow> wurde entbannt (<gray>{reason}</gray>)</white>"
+  broadcast: "{prefix}<gray>Spieler <green>{player}</green> wurde von <yellow>{executor}</yellow> entbannt (<white>{reason}</white>)</gray>"
 
 kick:
   usage: "{prefix}<red>Verwendung: /kick <Spieler> [Grund]</red>"
   not_found: "{prefix}<red>Spieler nicht gefunden oder nicht online!</red>"
   success: "<gradient:#55ff55:#00aa00><b>ERFOLG</b></gradient> <gray>»</gray> <white>Spieler <yellow>{player}</yellow> wurde gekickt (<gray>{reason}</gray>)</white>"
+  broadcast: "{prefix}<gray>Spieler <red>{player}</red> wurde von <yellow>{executor}</yellow> gekickt (<white>{reason}</white>)</gray>"
+  cannot_punish: "{prefix}<red>Du kannst diesen Spieler nicht kicken!</red>"
   disconnect_screen: "<gradient:#ff5555:#ff0000><b>DU WURDEST GEKICKT!</b></gradient>\n\n<gray>Grund: <white>{reason}</white>\n\n<gradient:#ffaa00:#ffff55>Bitte lies unsere Regeln, bevor du wieder beitrittst.</gradient>"
 
 blame:

@@ -41,6 +41,10 @@ public class KickCommand implements SimpleCommand {
 
         Optional<Player> targetPlayer = server.getPlayer(targetName);
         if (targetPlayer.isPresent()) {
+            if (targetPlayer.get().hasPermission("tbans.god")) {
+                source.sendMessage(mm.deserialize(languageManager.getMessage("kick.cannot_punish")));
+                return;
+            }
             String disconnectMsg = languageManager.getMessage("kick.disconnect_screen").replace("{reason}", reason);
             targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
             
@@ -48,6 +52,17 @@ public class KickCommand implements SimpleCommand {
                     .replace("{player}", targetName)
                     .replace("{reason}", reason);
             source.sendMessage(mm.deserialize(successMsg));
+
+            String executor = source instanceof Player ? ((Player) source).getUsername() : "Console";
+            String broadcastMsg = languageManager.getMessage("kick.broadcast")
+                    .replace("{player}", targetName)
+                    .replace("{executor}", executor)
+                    .replace("{reason}", reason);
+            for (Player p : server.getAllPlayers()) {
+                if (p.hasPermission("tbans.notify")) {
+                    p.sendMessage(mm.deserialize(broadcastMsg));
+                }
+            }
         } else {
             source.sendMessage(mm.deserialize(languageManager.getMessage("kick.not_found")));
         }
