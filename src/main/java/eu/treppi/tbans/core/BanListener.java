@@ -28,12 +28,15 @@ public class BanListener {
             if (latestBan == null) return;
             
             String expiryStr = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(latestBan.getExpiry()));
+            long remaining = latestBan.getExpiry() - System.currentTimeMillis();
+            String timeRemainingStr = eu.treppi.tbans.util.TimeUtils.formatRemainingTime(remaining);
             
             event.setResult(LoginEvent.ComponentResult.denied(
                 mm.deserialize(
                     "<gradient:#ff5555:#aa0000><b>YOU ARE BANNED FROM THIS NETWORK!</b></gradient>\n\n" +
                     "<gray>Reason: <yellow>" + latestBan.getReason() + "</yellow>\n" +
                     "<gray>Expires: <yellow>" + expiryStr + "</yellow>\n" +
+                    "<gray>Time remaining: <yellow>" + timeRemainingStr + "</yellow>\n" +
                     "\n" +
                     "<gradient:#ffaa00:#ffff55>Appeal at domain.com</gradient>"
                 )

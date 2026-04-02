@@ -7,7 +7,9 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import eu.treppi.tbans.commands.BanCommand;
+import eu.treppi.tbans.commands.BlameCommand;
 import eu.treppi.tbans.commands.HistoryCommand;
+import eu.treppi.tbans.commands.KickCommand;
 import eu.treppi.tbans.commands.UnbanCommand;
 import eu.treppi.tbans.manager.BanManager;
 import org.slf4j.Logger;
@@ -40,6 +42,8 @@ public class BanPlugin {
                 server.getCommandManager().metaBuilder("unban").build(),
                 new UnbanCommand(banManager)
         );
+
+
         server.getCommandManager().register(
                 server.getCommandManager().metaBuilder("history").build(),
                 new HistoryCommand(banManager)
@@ -47,6 +51,14 @@ public class BanPlugin {
         server.getCommandManager().register(
                 server.getCommandManager().metaBuilder("checkban").build(),
                 new HistoryCommand(banManager)
+        );
+        server.getCommandManager().register(
+                server.getCommandManager().metaBuilder("kick").build(),
+                new KickCommand(server)
+        );
+        server.getCommandManager().register(
+                server.getCommandManager().metaBuilder("blame").build(),
+                new BlameCommand(banManager)
         );
         server.getEventManager().register(this, new BanListener(banManager));
         logger.info("TBans has been enabled!");

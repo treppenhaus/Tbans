@@ -27,12 +27,12 @@ public class BanManager {
     public void banPlayer(String playerName, String bannerName, long durationMillis, String reason) {
         long timestamp = System.currentTimeMillis();
         long expiry = timestamp + durationMillis;
-        addEvent(playerName, new BanEvent(BanEvent.Type.BAN, bannerName, timestamp, expiry, reason));
+        addEvent(playerName, new BanEvent(BanEvent.Type.BAN, playerName, bannerName, timestamp, expiry, reason));
     }
 
     public void unbanPlayer(String playerName, String unbannerName, String reason) {
         long timestamp = System.currentTimeMillis();
-        addEvent(playerName, new BanEvent(BanEvent.Type.UNBAN, unbannerName, timestamp, -1, reason));
+        addEvent(playerName, new BanEvent(BanEvent.Type.UNBAN, playerName, unbannerName, timestamp, -1, reason));
     }
 
     private void addEvent(String playerName, BanEvent event) {
@@ -78,6 +78,18 @@ public class BanManager {
         return null;
     }
 
+    public List<BanEvent> getEventsByExecutor(String executorName) {
+        List<BanEvent> events = new ArrayList<>();
+        for (List<BanEvent> playerHistory : playerEvents.values()) {
+            for (BanEvent event : playerHistory) {
+                if (event.getExecutorName().equalsIgnoreCase(executorName)) {
+                    events.add(event);
+                }
+            }
+        }
+        return events;
+    }
+
     public List<BanEvent> getEvents(String playerName) {
         return playerEvents.getOrDefault(playerName.toLowerCase(), new ArrayList<>());
     }
@@ -109,13 +121,15 @@ public class BanManager {
         }
 
         private final Type type;
+        private final String targetName;
         private final String executorName;
         private final long timestamp;
         private final long expiry;
         private final String reason;
 
-        public BanEvent(Type type, String executorName, long timestamp, long expiry, String reason) {
+        public BanEvent(Type type, String targetName, String executorName, long timestamp, long expiry, String reason) {
             this.type = type;
+            this.targetName = targetName;
             this.executorName = executorName;
             this.timestamp = timestamp;
             this.expiry = expiry;
@@ -124,6 +138,10 @@ public class BanManager {
 
         public Type getType() {
             return type;
+        }
+
+        public String getTargetName() {
+            return targetName;
         }
 
         public String getExecutorName() {

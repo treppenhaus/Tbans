@@ -47,4 +47,27 @@ public class TimeUtils {
                 return -1;
         }
     }
+
+    public static String formatRemainingTime(long millis) {
+        if (millis <= 0) {
+            return "Permanent";
+        }
+
+        long seconds = millis / 1000;
+        long days = seconds / (24 * 3600);
+        seconds = seconds % (24 * 3600);
+        long hours = seconds / 3600;
+        seconds %= 3600;
+        long minutes = seconds / 60;
+        seconds %= 60;
+
+        StringBuilder sb = new StringBuilder();
+        if (days > 0) sb.append(days).append("d ");
+        if (hours > 0) sb.append(hours).append("h ");
+        if (minutes > 0) sb.append(minutes).append("m ");
+        if (seconds > 0) sb.append(seconds).append("s");
+
+        String result = sb.toString().trim();
+        return result.isEmpty() ? "Less than a second" : result;
+    }
 }

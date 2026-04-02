@@ -64,7 +64,13 @@ public class HistoryCommand implements SimpleCommand {
             if (event.getType() == BanManager.BanEvent.Type.BAN) {
                 if (event.getExpiry() > 0) {
                     String expiry = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getExpiry()));
-                    msg += " <dark_gray>(until " + expiry + ")</dark_gray>";
+                    long remaining = event.getExpiry() - System.currentTimeMillis();
+                    if (remaining > 0) {
+                        String remainingStr = eu.treppi.tbans.util.TimeUtils.formatRemainingTime(remaining);
+                        msg += " <dark_gray>(until " + expiry + ", " + remainingStr + " left)</dark_gray>";
+                    } else {
+                        msg += " <dark_gray>(until " + expiry + ")</dark_gray>";
+                    }
                 } else {
                     msg += " <dark_gray>(Permanent)</dark_gray>";
                 }
