@@ -3,6 +3,8 @@ package eu.treppi.tbans.commands;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import eu.treppi.tbans.manager.BanManager;
+import eu.treppi.tbans.manager.LanguageManager;
+import eu.treppi.tbans.util.TimeUtils;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.time.Instant;
@@ -13,25 +15,27 @@ import java.util.List;
 public class HistoryCommand implements SimpleCommand {
 
     private final BanManager banManager;
+    private final LanguageManager languageManager;
     private static final MiniMessage mm = MiniMessage.miniMessage();
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
             .withZone(ZoneId.systemDefault());
 
-    public HistoryCommand(BanManager banManager) {
+    public HistoryCommand(BanManager banManager, LanguageManager languageManager) {
         this.banManager = banManager;
+        this.languageManager = languageManager;
     }
 
     @Override
     public void execute(Invocation invocation) {
         CommandSource source = invocation.source();
         if (!source.hasPermission("tbans.history")) {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ff0000><b>TBans</b></gradient> <gray>»</gray> <red>You do not have permission to use this command!</red>"));
+            source.sendMessage(mm.deserialize(languageManager.getMessage("no_permission")));
             return;
         }
 
         String[] args = invocation.arguments();
         if (args.length < 1) {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ffaa00><b>TBans</b></gradient> <gray>»</gray> <red>Usage: /history <player></red>"));
+            source.sendMessage(mm.deserialize(languageManager.getMessage("history.usage")));
             return;
         }
 
@@ -40,44 +44,58 @@ public class HistoryCommand implements SimpleCommand {
 
         String banStatus;
         if (events.isEmpty()) {
-            banStatus = "<gradient:#55ff55:#aaffaa>BANSTATUS: NEVER</gradient>";
+            banStatus = languageManager.getMessage("history.status_never");
         } else if (banManager.isBanned(targetName)) {
-            banStatus = "<gradient:#ff5555:#aa0000>BANSTATUS: BANNED</gradient>";
+            banStatus = languageManager.getMessage("history.status_banned");
         } else {
-            banStatus = "<gradient:#ffaa00:#ffff55>BANSTATUS: EXPIRED / UNBANNED</gradient>";
+            banStatus = languageManager.getMessage("history.status_expired");
         }
 
-        source.sendMessage(mm.deserialize("\n<gradient:#ffaa00:#ffff55><b>History for " + targetName + "</b></gradient>"));
+        String header = languageManager.getMessage("history.header").replace("{player}", targetName);
+        source.sendMessage(mm.deserialize(header));
         source.sendMessage(mm.deserialize(banStatus));
-        source.sendMessage(mm.deserialize("<gray>-----------------------------------</gray>"));
+        String divider = languageManager.getMessage("history.divider");
+        source.sendMessage(mm.deserialize(divider));
 
         if (events.isEmpty()) {
+            String emptyMsg = languageManager.getMessage("history.empty").replace("{player}", targetName);
+            source.sendMessage(mm.deserialize(emptyMsg));
             return;
         }
 
         for (BanManager.BanEvent event : events) {
             String date = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getTimestamp()));
-            String typeColor = event.getType() == BanManager.BanEvent.Type.BAN ? "<red>BAN</red>" : "<green>UNBAN</green>";
+            String typeColor = event.getType() == BanManager.BanEvent.Type.BAN ? 
+                languageManager.getMessage("blame.type_ban") : languageManager.getMessage("blame.type_unban");
             
-            String msg = "<gray>[" + date + "] " + typeColor + " by <yellow>" + event.getExecutorName() + "</yellow>: <white>" + event.getReason() + "</white>";
-            
+            String expiryInfo = "";
             if (event.getType() == BanManager.BanEvent.Type.BAN) {
                 if (event.getExpiry() > 0) {
                     String expiry = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getExpiry()));
                     long remaining = event.getExpiry() - System.currentTimeMillis();
                     if (remaining > 0) {
-                        String remainingStr = eu.treppi.tbans.util.TimeUtils.formatRemainingTime(remaining);
-                        msg += " <dark_gray>(until " + expiry + ", " + remainingStr + " left)</dark_gray>";
+                        String remainingStr = TimeUtils.formatRemainingTime(remaining);
+                        expiryInfo = languageManager.getMessage("history.expiry_until_left")
+                                .replace("{expiry}", expiry)
+                                .replace("{left}", remainingStr);
                     } else {
-                        msg += " <dark_gray>(until " + expiry + ")</dark_gray>";
+                        expiryInfo = languageManager.getMessage("history.expiry_until")
+                                .replace("{expiry}", expiry);
                     }
                 } else {
-                    msg += " <dark_gray>(Permanent)</dark_gray>";
+                    expiryInfo = languageManager.getMessage("history.expiry_permanent");
                 }
             }
             
+            String msg = languageManager.getMessage("history.action_line")
+                    .replace("{date}", date)
+                    .replace("{type}", typeColor)
+                    .replace("{executor}", event.getExecutorName())
+                    .replace("{reason}", event.getReason())
+                    .replace("{expiry_info}", expiryInfo);
+            
             source.sendMessage(mm.deserialize(msg));
         }
-        source.sendMessage(mm.deserialize("<gray>-----------------------------------</gray>"));
+        source.sendMessage(mm.deserialize(divider));
     }
 }

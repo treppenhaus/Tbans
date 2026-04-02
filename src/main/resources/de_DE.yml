@@ -1,0 +1,44 @@
+prefix: "<gradient:#ff5555:#ffaa00><b>TBans</b></gradient> <gray>»</gray> "
+no_permission: "{prefix}<red>Du hast keine Rechte für diesen Befehl!</red>"
+
+ban:
+  usage: "{prefix}<red>Verwendung: /ban <Spieler> <Zeit> <Grund></red>"
+  invalid_time: "{prefix}<red>Ungültiges Zeitformat!</red>"
+  success: "<gradient:#55ff55:#00aa00><b>ERFOLG</b></gradient> <gray>»</gray> <white>Spieler <yellow>{player}</yellow> wurde für <yellow>{duration}</yellow> gebannt (<gray>{reason}</gray>)</white>"
+  disconnect_screen: "<gradient:#ff5555:#ff0000><b>DU BIST GEBANNT!</b></gradient>\n\n<gray>Dauer: <yellow>{duration}</yellow>\n<gray>Grund: <white>{reason}</white>"
+  login_denied: "<gradient:#ff5555:#aa0000><b>DU BIST VON DIESEM NETZWERK GEBANNT!</b></gradient>\n\n<gray>Grund: <yellow>{reason}</yellow>\n<gray>Ablauf: <yellow>{expiry}</yellow>\n<gray>Verbleibende Zeit: <yellow>{left}</yellow>\n\n<gradient:#ffaa00:#ffff55>Entbannung unter domain.com beantragen</gradient>"
+
+unban:
+  usage: "{prefix}<red>Verwendung: /unban <Spieler> [Grund]</red>"
+  not_banned: "{prefix}<red>Dieser Spieler ist nicht gebannt!</red>"
+  success: "<gradient:#55ff55:#00aa00><b>ERFOLG</b></gradient> <gray>»</gray> <white>Spieler <yellow>{player}</yellow> wurde entbannt (<gray>{reason}</gray>)</white>"
+
+kick:
+  usage: "{prefix}<red>Verwendung: /kick <Spieler> [Grund]</red>"
+  not_found: "{prefix}<red>Spieler nicht gefunden oder nicht online!</red>"
+  success: "<gradient:#55ff55:#00aa00><b>ERFOLG</b></gradient> <gray>»</gray> <white>Spieler <yellow>{player}</yellow> wurde gekickt (<gray>{reason}</gray>)</white>"
+  disconnect_screen: "<gradient:#ff5555:#ff0000><b>DU WURDEST GEKICKT!</b></gradient>\n\n<gray>Grund: <white>{reason}</white>\n\n<gradient:#ffaa00:#ffff55>Bitte lies unsere Regeln, bevor du wieder beitrittst.</gradient>"
+
+blame:
+  usage: "{prefix}<red>Verwendung: /blame <Teammitglied></red>"
+  empty: "{prefix}<gray>Keine Handlungen von <yellow>{staff}</yellow> gefunden</gray>"
+  header: "\n<gradient:#55ff55:#aaffaa><b>Team-Akte: {staff}</b></gradient>"
+  totals: "<gray>Gesamte Handlungen: <white>{total}</white> (<red>{bans} Bans</red>, <green>{unbans} Unbans</green>)</gray>"
+  recent_header: "<gray>Neueste 5 Handlungen:</gray>"
+  action_line: "<gray>[{date}] {type} <yellow>{target}</yellow> <dark_gray>»</dark_gray> <white>{reason}</white></gray>"
+  footer: "<gray>-----------------------------------</gray>"
+  type_ban: "<red>BAN</red>"
+  type_unban: "<green>UNBAN</green>"
+
+history:
+  usage: "{prefix}<red>Verwendung: /history <Spieler></red>"
+  empty: "{prefix}<gray>Keine Historie von <yellow>{player}</yellow> gefunden</gray>"
+  header: "\n<gradient:#ffaa00:#ffff55><b>Historie für {player}</b></gradient>"
+  divider: "<gray>-----------------------------------</gray>"
+  status_never: "<gradient:#55ff55:#aaffaa>BANSTATUS: NIEMALS</gradient>"
+  status_banned: "<gradient:#ff5555:#aa0000>BANSTATUS: GEBANNT</gradient>"
+  status_expired: "<gradient:#ffaa00:#ffff55>BANSTATUS: ABGELAUFEN / ENTBANNT</gradient>"
+  action_line: "<gray>[{date}] {type} von <yellow>{executor}</yellow>: <white>{reason}</white>{expiry_info}"
+  expiry_until: " <dark_gray>(bis {expiry})</dark_gray>"
+  expiry_until_left: " <dark_gray>(bis {expiry}, noch {left})</dark_gray>"
+  expiry_permanent: " <dark_gray>(Permanent)</dark_gray>"

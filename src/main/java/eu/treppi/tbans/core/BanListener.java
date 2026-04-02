@@ -4,6 +4,8 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.proxy.Player;
 import eu.treppi.tbans.manager.BanManager;
+import eu.treppi.tbans.manager.LanguageManager;
+import eu.treppi.tbans.util.TimeUtils;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.time.Instant;
@@ -12,12 +14,14 @@ import java.time.format.DateTimeFormatter;
 
 public class BanListener {
     private final BanManager banManager;
+    private final LanguageManager languageManager;
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
             .withZone(ZoneId.systemDefault());
     private static final MiniMessage mm = MiniMessage.miniMessage();
 
-    public BanListener(BanManager banManager) {
+    public BanListener(BanManager banManager, LanguageManager languageManager) {
         this.banManager = banManager;
+        this.languageManager = languageManager;
     }
 
     @Subscribe
@@ -29,18 +33,14 @@ public class BanListener {
             
             String expiryStr = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(latestBan.getExpiry()));
             long remaining = latestBan.getExpiry() - System.currentTimeMillis();
-            String timeRemainingStr = eu.treppi.tbans.util.TimeUtils.formatRemainingTime(remaining);
+            String timeRemainingStr = TimeUtils.formatRemainingTime(remaining);
             
-            event.setResult(LoginEvent.ComponentResult.denied(
-                mm.deserialize(
-                    "<gradient:#ff5555:#aa0000><b>YOU ARE BANNED FROM THIS NETWORK!</b></gradient>\n\n" +
-                    "<gray>Reason: <yellow>" + latestBan.getReason() + "</yellow>\n" +
-                    "<gray>Expires: <yellow>" + expiryStr + "</yellow>\n" +
-                    "<gray>Time remaining: <yellow>" + timeRemainingStr + "</yellow>\n" +
-                    "\n" +
-                    "<gradient:#ffaa00:#ffff55>Appeal at domain.com</gradient>"
-                )
-            ));
+            String msg = languageManager.getMessage("ban.login_denied")
+                    .replace("{reason}", latestBan.getReason())
+                    .replace("{expiry}", expiryStr)
+                    .replace("{left}", timeRemainingStr);
+                    
+            event.setResult(LoginEvent.ComponentResult.denied(mm.deserialize(msg)));
         }
     }
 }

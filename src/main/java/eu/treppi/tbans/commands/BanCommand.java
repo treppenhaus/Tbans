@@ -5,6 +5,7 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import eu.treppi.tbans.manager.BanManager;
+import eu.treppi.tbans.manager.LanguageManager;
 import eu.treppi.tbans.util.TimeUtils;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
@@ -15,25 +16,27 @@ public class BanCommand implements SimpleCommand {
 
     private final ProxyServer server;
     private final BanManager banManager;
+    private final LanguageManager languageManager;
     private static final MiniMessage mm = MiniMessage.miniMessage();
 
-    public BanCommand(ProxyServer server, BanManager banManager) {
+    public BanCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager) {
         this.server = server;
         this.banManager = banManager;
+        this.languageManager = languageManager;
     }
 
     @Override
     public void execute(Invocation invocation) {
         CommandSource source = invocation.source();
         if (!source.hasPermission("tbans.ban")) {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ff0000><b>TBans</b></gradient> <gray>»</gray> <red>You do not have permission to use this command!</red>"));
+            source.sendMessage(mm.deserialize(languageManager.getMessage("no_permission")));
             return;
         }
 
         String[] args = invocation.arguments();
 
         if (args.length < 3) {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ffaa00><b>TBans</b></gradient> <gray>»</gray> <red>Usage: /ban <player> <time> <reason></red>"));
+            source.sendMessage(mm.deserialize(languageManager.getMessage("ban.usage")));
             return;
         }
 
@@ -43,23 +46,25 @@ public class BanCommand implements SimpleCommand {
 
         long duration = TimeUtils.parseTime(timeStr);
         if (duration == -1) {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ffaa00><b>TBans</b></gradient> <gray>»</gray> <red>Invalid time format!</red>"));
+            source.sendMessage(mm.deserialize(languageManager.getMessage("ban.invalid_time")));
             return;
         }
 
         Optional<Player> targetPlayer = server.getPlayer(targetName);
         if (targetPlayer.isPresent()) {
-            targetPlayer.get().disconnect(mm.deserialize(
-                "<gradient:#ff5555:#ff0000><b>YOU ARE BANNED!</b></gradient>\n\n" +
-                "<gray>Duration: <yellow>" + timeStr + "</yellow>\n" +
-                "<gray>Reason: <white>" + reason + "</white>"
-            ));
+            String disconnectMsg = languageManager.getMessage("ban.disconnect_screen")
+                    .replace("{duration}", timeStr)
+                    .replace("{reason}", reason);
+            targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
         }
 
         String bannerName = source instanceof Player ? ((Player) source).getUsername() : "Console";
         banManager.banPlayer(targetName, bannerName, duration, reason);
-        source.sendMessage(mm.deserialize(
-            "<gradient:#55ff55:#00aa00><b>SUCCESS</b></gradient> <gray>»</gray> <white>Banned <yellow>" + targetName + "</yellow> for <yellow>" + timeStr + "</yellow> (<gray>" + reason + "</gray>)</white>"
-        ));
+        
+        String successMsg = languageManager.getMessage("ban.success")
+                .replace("{player}", targetName)
+                .replace("{duration}", timeStr)
+                .replace("{reason}", reason);
+        source.sendMessage(mm.deserialize(successMsg));
     }
 }

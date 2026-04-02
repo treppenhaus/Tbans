@@ -3,6 +3,7 @@ package eu.treppi.tbans.commands;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import eu.treppi.tbans.manager.BanManager;
+import eu.treppi.tbans.manager.LanguageManager;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.time.Instant;
@@ -13,26 +14,28 @@ import java.util.List;
 public class BlameCommand implements SimpleCommand {
 
     private final BanManager banManager;
+    private final LanguageManager languageManager;
     private static final MiniMessage mm = MiniMessage.miniMessage();
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
             .withZone(ZoneId.systemDefault());
 
-    public BlameCommand(BanManager banManager) {
+    public BlameCommand(BanManager banManager, LanguageManager languageManager) {
         this.banManager = banManager;
+        this.languageManager = languageManager;
     }
 
     @Override
     public void execute(Invocation invocation) {
         CommandSource source = invocation.source();
         if (!source.hasPermission("tbans.blame")) {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ff0000><b>TBans</b></gradient> <gray>»</gray> <red>You do not have permission to use this command!</red>"));
+            source.sendMessage(mm.deserialize(languageManager.getMessage("no_permission")));
             return;
         }
 
         String[] args = invocation.arguments();
 
         if (args.length < 1) {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ffaa00><b>TBans</b></gradient> <gray>»</gray> <red>Usage: /blame <staff></red>"));
+            source.sendMessage(mm.deserialize(languageManager.getMessage("blame.usage")));
             return;
         }
 
@@ -40,7 +43,8 @@ public class BlameCommand implements SimpleCommand {
         List<BanManager.BanEvent> events = banManager.getEventsByExecutor(staffName);
 
         if (events.isEmpty()) {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ffaa00><b>TBans</b></gradient> <gray>»</gray> <gray>No actions found by <yellow>" + staffName + "</yellow></gray>"));
+            String emptyMsg = languageManager.getMessage("blame.empty").replace("{staff}", staffName);
+            source.sendMessage(mm.deserialize(emptyMsg));
             return;
         }
 
@@ -48,19 +52,32 @@ public class BlameCommand implements SimpleCommand {
         long banCount = events.stream().filter(e -> e.getType() == BanManager.BanEvent.Type.BAN).count();
         long unbanCount = events.stream().filter(e -> e.getType() == BanManager.BanEvent.Type.UNBAN).count();
 
-        source.sendMessage(mm.deserialize("\n<gradient:#55ff55:#aaffaa><b>Staff Audit: " + staffName + "</b></gradient>"));
-        source.sendMessage(mm.deserialize("<gray>Total Actions: <white>" + totalActions + "</white> (<red>" + banCount + " Bans</red>, <green>" + unbanCount + " Unbans</green>)</gray>"));
-        source.sendMessage(mm.deserialize("<gray>Recent 5 Actions:</gray>"));
+        String header = languageManager.getMessage("blame.header").replace("{staff}", staffName);
+        source.sendMessage(mm.deserialize(header));
+        
+        String totals = languageManager.getMessage("blame.totals")
+                .replace("{total}", String.valueOf(totalActions))
+                .replace("{bans}", String.valueOf(banCount))
+                .replace("{unbans}", String.valueOf(unbanCount));
+        source.sendMessage(mm.deserialize(totals));
+        
+        source.sendMessage(mm.deserialize(languageManager.getMessage("blame.recent_header")));
 
         int startIndex = Math.max(0, events.size() - 5);
         for (int i = events.size() - 1; i >= startIndex; i--) {
             BanManager.BanEvent event = events.get(i);
             String date = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getTimestamp()));
-            String typeColor = event.getType() == BanManager.BanEvent.Type.BAN ? "<red>BAN</red>" : "<green>UNBAN</green>";
+            String typeColor = event.getType() == BanManager.BanEvent.Type.BAN ? 
+                languageManager.getMessage("blame.type_ban") : languageManager.getMessage("blame.type_unban");
             
-            source.sendMessage(mm.deserialize("<gray>[" + date + "] " + typeColor + " <yellow>" + event.getTargetName() + "</yellow> <dark_gray>»</dark_gray> <white>" + event.getReason() + "</white></gray>"));
+            String actionLine = languageManager.getMessage("blame.action_line")
+                    .replace("{date}", date)
+                    .replace("{type}", typeColor)
+                    .replace("{target}", event.getTargetName())
+                    .replace("{reason}", event.getReason());
+            source.sendMessage(mm.deserialize(actionLine));
         }
         
-        source.sendMessage(mm.deserialize("<gray>-----------------------------------</gray>"));
+        source.sendMessage(mm.deserialize(languageManager.getMessage("blame.footer")));
     }
 }

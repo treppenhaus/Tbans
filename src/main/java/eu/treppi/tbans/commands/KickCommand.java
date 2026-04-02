@@ -4,6 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import eu.treppi.tbans.manager.LanguageManager;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.util.Arrays;
@@ -12,24 +13,26 @@ import java.util.Optional;
 public class KickCommand implements SimpleCommand {
 
     private final ProxyServer server;
+    private final LanguageManager languageManager;
     private static final MiniMessage mm = MiniMessage.miniMessage();
 
-    public KickCommand(ProxyServer server) {
+    public KickCommand(ProxyServer server, LanguageManager languageManager) {
         this.server = server;
+        this.languageManager = languageManager;
     }
 
     @Override
     public void execute(Invocation invocation) {
         CommandSource source = invocation.source();
         if (!source.hasPermission("tbans.kick")) {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ff0000><b>TBans</b></gradient> <gray>»</gray> <red>You do not have permission to use this command!</red>"));
+            source.sendMessage(mm.deserialize(languageManager.getMessage("no_permission")));
             return;
         }
 
         String[] args = invocation.arguments();
 
         if (args.length < 1) {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ffaa00><b>TBans</b></gradient> <gray>»</gray> <red>Usage: /kick <player> [reason]</red>"));
+            source.sendMessage(mm.deserialize(languageManager.getMessage("kick.usage")));
             return;
         }
 
@@ -38,16 +41,15 @@ public class KickCommand implements SimpleCommand {
 
         Optional<Player> targetPlayer = server.getPlayer(targetName);
         if (targetPlayer.isPresent()) {
-            targetPlayer.get().disconnect(mm.deserialize(
-                "<gradient:#ff5555:#ff0000><b>YOU WERE KICKED!</b></gradient>\n\n" +
-                "<gray>Reason: <white>" + reason + "</white>\n\n" +
-                "<gradient:#ffaa00:#ffff55>Please read our rules before rejoining.</gradient>"
-            ));
-            source.sendMessage(mm.deserialize(
-                "<gradient:#55ff55:#00aa00><b>SUCCESS</b></gradient> <gray>»</gray> <white>Kicked <yellow>" + targetName + "</yellow> (<gray>" + reason + "</gray>)</white>"
-            ));
+            String disconnectMsg = languageManager.getMessage("kick.disconnect_screen").replace("{reason}", reason);
+            targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
+            
+            String successMsg = languageManager.getMessage("kick.success")
+                    .replace("{player}", targetName)
+                    .replace("{reason}", reason);
+            source.sendMessage(mm.deserialize(successMsg));
         } else {
-            source.sendMessage(mm.deserialize("<gradient:#ff5555:#ffaa00><b>TBans</b></gradient> <gray>»</gray> <red>Player not found or not online!</red>"));
+            source.sendMessage(mm.deserialize(languageManager.getMessage("kick.not_found")));
         }
     }
 }
