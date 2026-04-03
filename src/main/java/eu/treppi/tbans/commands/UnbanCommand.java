@@ -44,18 +44,22 @@ public class UnbanCommand implements SimpleCommand {
         String targetName = args[0];
         String reason = args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "No reason provided.";
 
-        UUID targetUuid;
-        if (server.getPlayer(targetName).isPresent()) {
-            targetUuid = server.getPlayer(targetName).get().getUniqueId();
-        } else {
-            try {
-                targetUuid = UUID.fromString(targetName);
-            } catch (IllegalArgumentException e) {
-                source.sendMessage(mm.deserialize(languageManager.getMessage("unban.not_found")));
-                return;
+        // Asynchronous resolution
+        banManager.resolveUuid(targetName).thenAccept(uuid -> {
+            if (uuid == null) {
+                try {
+                    UUID directUuid = UUID.fromString(targetName);
+                    executeUnban(source, directUuid, targetName, reason);
+                } catch (IllegalArgumentException e) {
+                    source.sendMessage(mm.deserialize(languageManager.getMessage("unban.not_found")));
+                }
+            } else {
+                executeUnban(source, uuid, targetName, reason);
             }
-        }
+        });
+    }
 
+    private void executeUnban(CommandSource source, UUID targetUuid, String targetName, String reason) {
         if (!banManager.isBanned(targetUuid)) {
             source.sendMessage(mm.deserialize(languageManager.getMessage("unban.not_banned")));
             return;
@@ -83,13 +87,16 @@ public class UnbanCommand implements SimpleCommand {
 
     @Override
     public List<String> suggest(Invocation invocation) {
+        if (!invocation.source().hasPermission("tbans.unban")) {
+            return List.of();
+        }
+
         String[] args = invocation.arguments();
         if (args.length <= 1) {
             String prefix = args.length == 0 ? "" : args[0].toLowerCase();
-            return server.getAllPlayers().stream()
-                    .map(Player::getUsername)
+            return banManager.getBannedNames().stream()
                     .filter(name -> name.toLowerCase().startsWith(prefix))
-                    .toList();
+                    .collect(java.util.stream.Collectors.toList());
         }
         return List.of();
     }

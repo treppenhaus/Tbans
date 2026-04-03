@@ -81,13 +81,17 @@ public class KickCommand implements SimpleCommand {
 
     @Override
     public List<String> suggest(Invocation invocation) {
+        if (!invocation.source().hasPermission("tbans.kick")) {
+            return List.of();
+        }
+
         String[] args = invocation.arguments();
         if (args.length <= 1) {
             String prefix = args.length == 0 ? "" : args[0].toLowerCase();
             return server.getAllPlayers().stream()
                     .map(Player::getUsername)
                     .filter(name -> name.toLowerCase().startsWith(prefix))
-                    .toList();
+                    .collect(java.util.stream.Collectors.toList());
         }
         return List.of();
     }

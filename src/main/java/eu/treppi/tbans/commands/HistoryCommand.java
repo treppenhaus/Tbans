@@ -12,8 +12,11 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class HistoryCommand implements SimpleCommand {
 
@@ -45,18 +48,23 @@ public class HistoryCommand implements SimpleCommand {
         }
 
         String targetName = args[0];
-        UUID targetUuid;
-        if (server.getPlayer(targetName).isPresent()) {
-            targetUuid = server.getPlayer(targetName).get().getUniqueId();
-        } else {
-            try {
-                targetUuid = UUID.fromString(targetName);
-            } catch (IllegalArgumentException e) {
-                source.sendMessage(mm.deserialize(languageManager.getMessage("unban.not_found")));
-                return;
+        
+        // Asynchronous resolution
+        banManager.resolveUuid(targetName).thenAccept(uuid -> {
+            if (uuid == null) {
+                try {
+                    UUID directUuid = UUID.fromString(targetName);
+                    showHistory(source, directUuid, targetName);
+                } catch (IllegalArgumentException e) {
+                    source.sendMessage(mm.deserialize(languageManager.getMessage("history.not_found")));
+                }
+            } else {
+                showHistory(source, uuid, targetName);
             }
-        }
+        });
+    }
 
+    private void showHistory(CommandSource source, UUID targetUuid, String targetName) {
         List<BanManager.BanEvent> events = banManager.getEvents(targetUuid);
 
         String banStatus;
@@ -93,7 +101,9 @@ public class HistoryCommand implements SimpleCommand {
             
             String expiryInfo = "";
             if (event.getType() == BanManager.BanEvent.Type.BAN) {
-                if (event.getExpiry() > 0) {
+                if (event.getExpiry() == -1) {
+                    expiryInfo = languageManager.getMessage("history.expiry_permanent");
+                } else if (event.getExpiry() > 0) {
                     String expiry = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getExpiry()));
                     long remaining = event.getExpiry() - System.currentTimeMillis();
                     if (remaining > 0) {
@@ -105,15 +115,16 @@ public class HistoryCommand implements SimpleCommand {
                         expiryInfo = languageManager.getMessage("history.expiry_until")
                                 .replace("{expiry}", expiry);
                     }
-                } else {
-                    expiryInfo = languageManager.getMessage("history.expiry_permanent");
                 }
             }
+            
+            // USE NAME INSTEAD OF UUID
+            String executorName = banManager.getNameFromUuid(event.getExecutorUUID());
             
             String msg = languageManager.getMessage("history.action_line")
                     .replace("{date}", date)
                     .replace("{type}", typeColor)
-                    .replace("{executor}", event.getExecutorUUID().toString())
+                    .replace("{executor}", executorName)
                     .replace("{reason}", event.getReason())
                     .replace("{expiry_info}", expiryInfo);
             
@@ -124,13 +135,21 @@ public class HistoryCommand implements SimpleCommand {
 
     @Override
     public List<String> suggest(Invocation invocation) {
+        if (!invocation.source().hasPermission("tbans.history")) {
+            return List.of();
+        }
+
         String[] args = invocation.arguments();
         if (args.length <= 1) {
             String prefix = args.length == 0 ? "" : args[0].toLowerCase();
-            return server.getAllPlayers().stream()
-                    .map(Player::getUsername)
+            
+            Set<String> suggestions = new HashSet<>();
+            suggestions.addAll(server.getAllPlayers().stream().map(Player::getUsername).toList());
+            suggestions.addAll(banManager.getAllCachedNames());
+
+            return suggestions.stream()
                     .filter(name -> name.toLowerCase().startsWith(prefix))
-                    .toList();
+                    .collect(Collectors.toList());
         }
         return List.of();
     }

@@ -27,13 +27,25 @@ public class BanListener {
     @Subscribe
     public void onLogin(LoginEvent event) {
         Player player = event.getPlayer();
+        
+        // Update name cache for offline resolution
+        banManager.updateNameCache(player.getUniqueId(), player.getUsername());
+        
         if (banManager.isBanned(player.getUniqueId())) {
             BanManager.BanEvent latestBan = banManager.getLatestBan(player.getUniqueId());
             if (latestBan == null) return;
             
-            String expiryStr = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(latestBan.getExpiry()));
-            long remaining = latestBan.getExpiry() - System.currentTimeMillis();
-            String timeRemainingStr = TimeUtils.formatRemainingTime(remaining);
+            String expiryStr;
+            String timeRemainingStr;
+            
+            if (latestBan.getExpiry() == -1) {
+                expiryStr = "Permanent";
+                timeRemainingStr = "Permanent";
+            } else {
+                expiryStr = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(latestBan.getExpiry()));
+                long remaining = latestBan.getExpiry() - System.currentTimeMillis();
+                timeRemainingStr = TimeUtils.formatRemainingTime(remaining);
+            }
             
             String msg = languageManager.getMessage("ban.login_denied")
                     .replace("{reason}", latestBan.getReason())

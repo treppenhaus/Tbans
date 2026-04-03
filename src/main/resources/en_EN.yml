@@ -8,6 +8,7 @@ ban:
   broadcast: "{prefix}<#af86b3>Player <#ff7396>{player}</#ff7396> was <b>banned</b> by <#8af0e6>{executor}</#8af0e6> for <#8af0e6>{duration}</#8af0e6> (<#d58af0>{reason}</#d58af0>)</#af86b3>"
   cannot_punish: "{prefix}<#ff7396>You cannot ban this player!</#ff7396>"
   disconnect_screen: "<gradient:#ff7396:#f58be8><b>YOU ARE BANNED!</b></gradient>\n\n<#af86b3>Duration: <#8af0e6>{duration}</#8af0e6>\n<#af86b3>Reason: <#d58af0>{reason}</#d58af0>"
+  not_found: "{prefix}<#ff7396>Player not found or not online!</#ff7396>"
   login_denied: "<gradient:#ff7396:#f58be8><b>YOU ARE BANNED FROM THIS NETWORK!</b></gradient>\n\n<#af86b3>Reason: <#8af0e6>{reason}</#8af0e6>\n<#af86b3>Expires: <#8af0e6>{expiry}</#8af0e6>\n<#af86b3>Time remaining: <#8af0e6>{left}</#8af0e6>\n\n<gradient:#8bb0f5:#f58be8>Appeal at domain.com</gradient>"
 
 unban:
@@ -15,6 +16,7 @@ unban:
   not_banned: "{prefix}<#ff7396>This player is not banned!</#ff7396>"
   success: "<gradient:#8af0e6:#8bb0f5><b>SUCCESS</b></gradient> <#af86b3>»</#af86b3> <#d58af0>Unbanned <#8af0e6>{player}</#8af0e6> (<#af86b3>{reason}</#af86b3>)</#d58af0>"
   broadcast: "{prefix}<#af86b3>Player <#8bb0f5>{player}</#8bb0f5> was <b>unbanned</b> by <#8af0e6>{executor}</#8af0e6> (<#d58af0>{reason}</#d58af0>)</#af86b3>"
+  not_found: "{prefix}<#ff7396>Player not found or not online!</#ff7396>"
 
 kick:
   usage: "{prefix}<#ff7396>Usage: /kick <player> [reason]</#ff7396>"
@@ -27,6 +29,7 @@ kick:
 blame:
   usage: "{prefix}<#ff7396>Usage: /blame <staff></#ff7396>"
   empty: "{prefix}<#af86b3>No actions found by <#8af0e6>{staff}</#8af0e6></#af86b3>"
+  not_found: "{prefix}<#ff7396>Staff member not found!</#ff7396>"
   header: "\n<gradient:#8af0e6:#8bb0f5><b>Staff Audit: {staff}</b></gradient>"
   totals: "<#af86b3>Total Actions: <#d58af0>{total}</#d58af0> (<#ff7396>{bans} Bans</#ff7396>, <#8bb0f5>{unbans} Unbans</#8bb0f5>)</#af86b3>"
   recent_header: "<#af86b3>Recent 5 Actions:</#af86b3>"
@@ -38,6 +41,7 @@ blame:
 history:
   usage: "{prefix}<#ff7396>Usage: /history <player></#ff7396>"
   empty: "{prefix}<#af86b3>No history found for <#8af0e6>{player}</#8af0e6></#af86b3>"
+  not_found: "{prefix}<#ff7396>Player not found!</#ff7396>"
   header: "\n<gradient:#8bb0f5:#f58be8><b>History for {player}</b></gradient>"
   divider: "<#af86b3>-----------------------------------</#af86b3>"
   status_never: "<gradient:#8af0e6:#8bb0f5>BANSTATUS: NEVER</gradient>"

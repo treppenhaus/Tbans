@@ -45,18 +45,23 @@ public class BlameCommand implements SimpleCommand {
         }
 
         String staffName = args[0];
-        UUID staffUuid;
-        if (server.getPlayer(staffName).isPresent()) {
-            staffUuid = server.getPlayer(staffName).get().getUniqueId();
-        } else {
-            try {
-                staffUuid = UUID.fromString(staffName);
-            } catch (IllegalArgumentException e) {
-                source.sendMessage(mm.deserialize(languageManager.getMessage("unban.not_found")));
-                return;
+        
+        // Asynchronous resolution
+        banManager.resolveUuid(staffName).thenAccept(uuid -> {
+            if (uuid == null) {
+                try {
+                    UUID directUuid = UUID.fromString(staffName);
+                    showBlame(source, directUuid, staffName);
+                } catch (IllegalArgumentException e) {
+                    source.sendMessage(mm.deserialize(languageManager.getMessage("blame.not_found")));
+                }
+            } else {
+                showBlame(source, uuid, staffName);
             }
-        }
+        });
+    }
 
+    private void showBlame(CommandSource source, UUID staffUuid, String staffName) {
         List<BanManager.BanEvent> events = banManager.getEventsByExecutor(staffUuid);
 
         if (events.isEmpty()) {
@@ -95,10 +100,13 @@ public class BlameCommand implements SimpleCommand {
                 typeColor = "<yellow>KICK</yellow>";
             }
 
+            // USE NAME INSTEAD OF UUID
+            String targetName = banManager.getNameFromUuid(event.getTargetUUID());
+
             String actionLine = languageManager.getMessage("blame.action_line")
                     .replace("{date}", date)
                     .replace("{type}", typeColor)
-                    .replace("{target}", event.getTargetUUID().toString())
+                    .replace("{target}", targetName)
                     .replace("{reason}", event.getReason());
             source.sendMessage(mm.deserialize(actionLine));
         }
@@ -108,13 +116,17 @@ public class BlameCommand implements SimpleCommand {
 
     @Override
     public List<String> suggest(Invocation invocation) {
+        if (!invocation.source().hasPermission("tbans.blame")) {
+            return List.of();
+        }
+
         String[] args = invocation.arguments();
         if (args.length <= 1) {
             String prefix = args.length == 0 ? "" : args[0].toLowerCase();
             return server.getAllPlayers().stream()
                     .map(Player::getUsername)
                     .filter(name -> name.toLowerCase().startsWith(prefix))
-                    .toList();
+                    .collect(java.util.stream.Collectors.toList());
         }
         return List.of();
     }

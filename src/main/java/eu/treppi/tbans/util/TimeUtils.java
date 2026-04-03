@@ -13,7 +13,12 @@ public class TimeUtils {
             return -1;
         }
 
-        long amount = Long.parseLong(matcher.group(1));
+        long amount;
+        try {
+            amount = Long.parseLong(matcher.group(1));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
         String unit = matcher.group(2);
 
         switch (unit) {
@@ -49,11 +54,13 @@ public class TimeUtils {
     }
 
     public static String formatRemainingTime(long millis) {
-        if (millis <= 0) {
+        if (millis < 0) {
             return "Permanent";
         }
 
         long seconds = millis / 1000;
+        if (seconds == 0) return "Less than a second";
+
         long days = seconds / (24 * 3600);
         seconds = seconds % (24 * 3600);
         long hours = seconds / 3600;

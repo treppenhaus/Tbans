@@ -8,13 +8,15 @@ ban:
   broadcast: "{prefix}<#af86b3>Spieler <#ff7396>{player}</#ff7396> wurde von <#8af0e6>{executor}</#8af0e6> für <#8af0e6>{duration}</#8af0e6> gebannt (<#d58af0>{reason}</#d58af0>)</#af86b3>"
   cannot_punish: "{prefix}<#ff7396>Du kannst diesen Spieler nicht bannen!</#ff7396>"
   disconnect_screen: "<gradient:#ff7396:#f58be8><b>DU BIST GEBANNT!</b></gradient>\n\n<#af86b3>Dauer: <#8af0e6>{duration}</#8af0e6>\n<#af86b3>Grund: <#d58af0>{reason}</#d58af0>"
+  not_found: "{prefix}<#ff7396>Spieler nicht gefunden oder nicht online!</#ff7396>"
   login_denied: "<gradient:#ff7396:#f58be8><b>DU BIST VON DIESEM NETZWERK GEBANNT!</b></gradient>\n\n<#af86b3>Grund: <#8af0e6>{reason}</#8af0e6>\n<#af86b3>Ablauf: <#8af0e6>{expiry}</#8af0e6>\n<#af86b3>Verbleibende Zeit: <#8af0e6>{left}</#8af0e6>\n\n<gradient:#8bb0f5:#f58be8>Entbannung unter domain.com beantragen</gradient>"
 
 unban:
   usage: "{prefix}<#ff7396>Verwendung: /unban <Spieler> [Grund]</#ff7396>"
   not_banned: "{prefix}<#ff7396>Dieser Spieler ist nicht gebannt!</#ff7396>"
   success: "<gradient:#8af0e6:#8bb0f5><b>ERFOLG</b></gradient> <#af86b3>»</#af86b3> <#d58af0>Spieler <#8af0e6>{player}</#8af0e6> wurde entbannt (<#af86b3>{reason}</#af86b3>)</#d58af0>"
-  broadcast: "{prefix}<#af86b3>Spieler <#8bb0f5>{player}</#8bb0f5> wurde von <#8af0e6>{executor}</#8af0e6> entbannt (<#d58af0>{reason}</#d58af0>)</#af86b3>"
+  broadcast: "{prefix}<#af86b3>Spieler <#8af0e6>{executor}</#8af0e6> hat <#8bb0f5>{player}</#8bb0f5> entbannt (<#d58af0>{reason}</#d58af0>)</#af86b3>"
+  not_found: "{prefix}<#ff7396>Spieler nicht gefunden oder nicht online!</#ff7396>"
 
 kick:
   usage: "{prefix}<#ff7396>Verwendung: /kick <Spieler> [Grund]</#ff7396>"
@@ -27,6 +29,7 @@ kick:
 blame:
   usage: "{prefix}<#ff7396>Verwendung: /blame <Teammitglied></#ff7396>"
   empty: "{prefix}<#af86b3>Keine Handlungen von <#8af0e6>{staff}</#8af0e6> gefunden</#af86b3>"
+  not_found: "{prefix}<#ff7396>Teammitglied nicht gefunden!</#ff7396>"
   header: "\n<gradient:#8af0e6:#8bb0f5><b>Team-Akte: {staff}</b></gradient>"
   totals: "<#af86b3>Gesamte Handlungen: <#d58af0>{total}</#d58af0> (<#ff7396>{bans} Bans</#ff7396>, <#8bb0f5>{unbans} Unbans</#8bb0f5>)</#af86b3>"
   recent_header: "<#af86b3>Neueste 5 Handlungen:</#af86b3>"
@@ -38,6 +41,7 @@ blame:
 history:
   usage: "{prefix}<#ff7396>Verwendung: /history <Spieler></#ff7396>"
   empty: "{prefix}<#af86b3>Keine Historie von <#8af0e6>{player}</#8af0e6> gefunden</#af86b3>"
+  not_found: "{prefix}<#ff7396>Spieler nicht gefunden!</#ff7396>"
   header: "\n<gradient:#8bb0f5:#f58be8><b>Historie für {player}</b></gradient>"
   divider: "<#af86b3>-----------------------------------</#af86b3>"
   status_never: "<gradient:#8af0e6:#8bb0f5>BANSTATUS: NIEMALS</gradient>"
