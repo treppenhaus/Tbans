@@ -2,6 +2,8 @@ package eu.treppi.tbans.commands;
 
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
 import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.LanguageManager;
 import eu.treppi.tbans.util.TimeUtils;
@@ -11,16 +13,19 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 public class HistoryCommand implements SimpleCommand {
 
+    private final ProxyServer server;
     private final BanManager banManager;
     private final LanguageManager languageManager;
     private static final MiniMessage mm = MiniMessage.miniMessage();
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
             .withZone(ZoneId.systemDefault());
 
-    public HistoryCommand(BanManager banManager, LanguageManager languageManager) {
+    public HistoryCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager) {
+        this.server = server;
         this.banManager = banManager;
         this.languageManager = languageManager;
     }
@@ -40,12 +45,24 @@ public class HistoryCommand implements SimpleCommand {
         }
 
         String targetName = args[0];
-        List<BanManager.BanEvent> events = banManager.getEvents(targetName);
+        UUID targetUuid;
+        if (server.getPlayer(targetName).isPresent()) {
+            targetUuid = server.getPlayer(targetName).get().getUniqueId();
+        } else {
+            try {
+                targetUuid = UUID.fromString(targetName);
+            } catch (IllegalArgumentException e) {
+                source.sendMessage(mm.deserialize(languageManager.getMessage("unban.not_found")));
+                return;
+            }
+        }
+
+        List<BanManager.BanEvent> events = banManager.getEvents(targetUuid);
 
         String banStatus;
         if (events.isEmpty()) {
             banStatus = languageManager.getMessage("history.status_never");
-        } else if (banManager.isBanned(targetName)) {
+        } else if (banManager.isBanned(targetUuid)) {
             banStatus = languageManager.getMessage("history.status_banned");
         } else {
             banStatus = languageManager.getMessage("history.status_expired");
@@ -65,8 +82,14 @@ public class HistoryCommand implements SimpleCommand {
 
         for (BanManager.BanEvent event : events) {
             String date = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getTimestamp()));
-            String typeColor = event.getType() == BanManager.BanEvent.Type.BAN ? 
-                languageManager.getMessage("blame.type_ban") : languageManager.getMessage("blame.type_unban");
+            String typeColor;
+            if (event.getType() == BanManager.BanEvent.Type.BAN) {
+                typeColor = languageManager.getMessage("blame.type_ban");
+            } else if (event.getType() == BanManager.BanEvent.Type.UNBAN) {
+                typeColor = languageManager.getMessage("blame.type_unban");
+            } else {
+                typeColor = "<yellow>KICK</yellow>";
+            }
             
             String expiryInfo = "";
             if (event.getType() == BanManager.BanEvent.Type.BAN) {
@@ -90,12 +113,25 @@ public class HistoryCommand implements SimpleCommand {
             String msg = languageManager.getMessage("history.action_line")
                     .replace("{date}", date)
                     .replace("{type}", typeColor)
-                    .replace("{executor}", event.getExecutorName())
+                    .replace("{executor}", event.getExecutorUUID().toString())
                     .replace("{reason}", event.getReason())
                     .replace("{expiry_info}", expiryInfo);
             
             source.sendMessage(mm.deserialize(msg));
         }
         source.sendMessage(mm.deserialize(divider));
+    }
+
+    @Override
+    public List<String> suggest(Invocation invocation) {
+        String[] args = invocation.arguments();
+        if (args.length <= 1) {
+            String prefix = args.length == 0 ? "" : args[0].toLowerCase();
+            return server.getAllPlayers().stream()
+                    .map(Player::getUsername)
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
+                    .toList();
+        }
+        return List.of();
     }
 }

@@ -10,9 +10,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class BanManager {
-    private Map<String, List<BanEvent>> playerEvents = new HashMap<>();
+    private Map<UUID, List<BanEvent>> playerEvents = new HashMap<>();
     private final File storageFile;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
@@ -20,38 +21,40 @@ public class BanManager {
         if (!dataDirectory.toFile().exists()) {
             dataDirectory.toFile().mkdirs();
         }
-        this.storageFile = dataDirectory.resolve("bans.json").toFile();
+        this.storageFile = dataDirectory.resolve("uuid-bans.json").toFile();
         loadBans();
     }
 
-    public void banPlayer(String playerName, String bannerName, long durationMillis, String reason) {
+    public void banPlayer(UUID target, UUID executor, long durationMillis, String reason) {
         long timestamp = System.currentTimeMillis();
         long expiry = timestamp + durationMillis;
-        addEvent(playerName, new BanEvent(BanEvent.Type.BAN, playerName, bannerName, timestamp, expiry, reason));
+        addEvent(target, new BanEvent(BanEvent.Type.BAN, target, executor, timestamp, expiry, reason));
     }
 
-    public void unbanPlayer(String playerName, String unbannerName, String reason) {
+    public void unbanPlayer(UUID target, UUID executor, String reason) {
         long timestamp = System.currentTimeMillis();
-        addEvent(playerName, new BanEvent(BanEvent.Type.UNBAN, playerName, unbannerName, timestamp, -1, reason));
+        addEvent(target, new BanEvent(BanEvent.Type.UNBAN, target, executor, timestamp, -1, reason));
     }
 
-    private void addEvent(String playerName, BanEvent event) {
-        String name = playerName.toLowerCase();
-        playerEvents.computeIfAbsent(name, k -> new ArrayList<>()).add(event);
+    public void kickPlayer(UUID target, UUID executor, String reason) {
+        long timestamp = System.currentTimeMillis();
+        addEvent(target, new BanEvent(BanEvent.Type.KICK, target, executor, timestamp, -1, reason));
+    }
+
+    private void addEvent(UUID target, BanEvent event) {
+        playerEvents.computeIfAbsent(target, k -> new ArrayList<>()).add(event);
         saveBans();
     }
 
-    public boolean isBanned(String playerName) {
-        String name = playerName.toLowerCase();
-        if (!playerEvents.containsKey(name))
-            return false;
+    public boolean isBanned(UUID uuid) {
+        if (!playerEvents.containsKey(uuid)) return false;
 
-        List<BanEvent> events = playerEvents.get(name);
+        List<BanEvent> events = playerEvents.get(uuid);
         if (events.isEmpty())
             return false;
 
         BanEvent lastEvent = events.get(events.size() - 1);
-        if (lastEvent.getType() == BanEvent.Type.UNBAN)
+        if (lastEvent.getType() != BanEvent.Type.BAN)
             return false;
 
         // It is a BAN event
@@ -62,12 +65,10 @@ public class BanManager {
         return true;
     }
 
-    public BanEvent getLatestBan(String playerName) {
-        String name = playerName.toLowerCase();
-        if (!playerEvents.containsKey(name))
-            return null;
+    public BanEvent getLatestBan(UUID uuid) {
+        if (!playerEvents.containsKey(uuid)) return null;
 
-        List<BanEvent> events = playerEvents.get(name);
+        List<BanEvent> events = playerEvents.get(uuid);
         for (int i = events.size() - 1; i >= 0; i--) {
             BanEvent event = events.get(i);
             if (event.getType() == BanEvent.Type.BAN)
@@ -78,11 +79,11 @@ public class BanManager {
         return null;
     }
 
-    public List<BanEvent> getEventsByExecutor(String executorName) {
+    public List<BanEvent> getEventsByExecutor(UUID executorUuid) {
         List<BanEvent> events = new ArrayList<>();
         for (List<BanEvent> playerHistory : playerEvents.values()) {
             for (BanEvent event : playerHistory) {
-                if (event.getExecutorName().equalsIgnoreCase(executorName)) {
+                if (executorUuid.equals(event.getExecutorUUID())) {
                     events.add(event);
                 }
             }
@@ -90,15 +91,19 @@ public class BanManager {
         return events;
     }
 
-    public List<BanEvent> getEvents(String playerName) {
-        return playerEvents.getOrDefault(playerName.toLowerCase(), new ArrayList<>());
+    public List<BanEvent> getEvents(UUID uuid) {
+        return playerEvents.getOrDefault(uuid, new ArrayList<>());
+    }
+
+    public Map<UUID, List<BanEvent>> getAllEvents() {
+        return playerEvents;
     }
 
     private void loadBans() {
         if (!storageFile.exists())
             return;
         try (Reader reader = new FileReader(storageFile)) {
-            playerEvents = GSON.fromJson(reader, new TypeToken<Map<String, List<BanEvent>>>() {
+            playerEvents = GSON.fromJson(reader, new TypeToken<Map<UUID, List<BanEvent>>>() {
             }.getType());
             if (playerEvents == null)
                 playerEvents = new HashMap<>();
@@ -117,20 +122,20 @@ public class BanManager {
 
     public static class BanEvent {
         public enum Type {
-            BAN, UNBAN
+            BAN, UNBAN, KICK
         }
 
         private final Type type;
-        private final String targetName;
-        private final String executorName;
+        private final UUID targetUUID;
+        private final UUID executorUUID;
         private final long timestamp;
         private final long expiry;
         private final String reason;
 
-        public BanEvent(Type type, String targetName, String executorName, long timestamp, long expiry, String reason) {
+        public BanEvent(Type type, UUID targetUUID, UUID executorUUID, long timestamp, long expiry, String reason) {
             this.type = type;
-            this.targetName = targetName;
-            this.executorName = executorName;
+            this.targetUUID = targetUUID;
+            this.executorUUID = executorUUID;
             this.timestamp = timestamp;
             this.expiry = expiry;
             this.reason = reason;
@@ -140,12 +145,12 @@ public class BanManager {
             return type;
         }
 
-        public String getTargetName() {
-            return targetName;
+        public UUID getTargetUUID() {
+            return targetUUID;
         }
 
-        public String getExecutorName() {
-            return executorName;
+        public UUID getExecutorUUID() {
+            return executorUUID;
         }
 
         public long getTimestamp() {

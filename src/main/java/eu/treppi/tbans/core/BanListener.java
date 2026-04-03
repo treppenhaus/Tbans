@@ -27,8 +27,8 @@ public class BanListener {
     @Subscribe
     public void onLogin(LoginEvent event) {
         Player player = event.getPlayer();
-        if (banManager.isBanned(player.getUsername())) {
-            BanManager.BanEvent latestBan = banManager.getLatestBan(player.getUsername());
+        if (banManager.isBanned(player.getUniqueId())) {
+            BanManager.BanEvent latestBan = banManager.getLatestBan(player.getUniqueId());
             if (latestBan == null) return;
             
             String expiryStr = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(latestBan.getExpiry()));

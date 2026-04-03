@@ -10,7 +10,9 @@ import eu.treppi.tbans.util.TimeUtils;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public class BanCommand implements SimpleCommand {
 
@@ -18,6 +20,7 @@ public class BanCommand implements SimpleCommand {
     private final BanManager banManager;
     private final LanguageManager languageManager;
     private static final MiniMessage mm = MiniMessage.miniMessage();
+    private static final UUID CONSOLE_UUID = new UUID(0, 0);
 
     public BanCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager) {
         this.server = server;
@@ -50,20 +53,31 @@ public class BanCommand implements SimpleCommand {
             return;
         }
 
+        UUID targetUuid;
         Optional<Player> targetPlayer = server.getPlayer(targetName);
         if (targetPlayer.isPresent()) {
             if (targetPlayer.get().hasPermission("tbans.god")) {
                 source.sendMessage(mm.deserialize(languageManager.getMessage("ban.cannot_punish")));
                 return;
             }
+            targetUuid = targetPlayer.get().getUniqueId();
             String disconnectMsg = languageManager.getMessage("ban.disconnect_screen")
                     .replace("{duration}", timeStr)
                     .replace("{reason}", reason);
             targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
+        } else {
+            try {
+                targetUuid = UUID.fromString(targetName);
+            } catch (IllegalArgumentException e) {
+                source.sendMessage(mm.deserialize(languageManager.getMessage("ban.not_found")));
+                return;
+            }
         }
 
+        UUID bannerUuid = source instanceof Player ? ((Player) source).getUniqueId() : CONSOLE_UUID;
         String bannerName = source instanceof Player ? ((Player) source).getUsername() : "Console";
-        banManager.banPlayer(targetName, bannerName, duration, reason);
+        
+        banManager.banPlayer(targetUuid, bannerUuid, duration, reason);
         
         String successMsg = languageManager.getMessage("ban.success")
                 .replace("{player}", targetName)
@@ -81,5 +95,18 @@ public class BanCommand implements SimpleCommand {
                 p.sendMessage(mm.deserialize(broadcastMsg));
             }
         }
+    }
+
+    @Override
+    public List<String> suggest(Invocation invocation) {
+        String[] args = invocation.arguments();
+        if (args.length <= 1) {
+            String prefix = args.length == 0 ? "" : args[0].toLowerCase();
+            return server.getAllPlayers().stream()
+                    .map(Player::getUsername)
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
+                    .toList();
+        }
+        return List.of();
     }
 }

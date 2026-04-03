@@ -46,16 +46,16 @@ public class BanPlugin {
 
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("history").build(),
-                                new HistoryCommand(banManager, languageManager));
+                                new HistoryCommand(server, banManager, languageManager));
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("checkban").build(),
-                                new HistoryCommand(banManager, languageManager));
+                                new HistoryCommand(server, banManager, languageManager));
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("kick").build(),
-                                new KickCommand(server, languageManager));
+                                new KickCommand(server, banManager, languageManager));
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("blame").build(),
-                                new BlameCommand(banManager, languageManager));
+                                new BlameCommand(server, banManager, languageManager));
                 server.getEventManager().register(this, new BanListener(banManager, languageManager));
                 logger.info("TBans has been enabled!");
         }

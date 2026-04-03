@@ -2,6 +2,8 @@ package eu.treppi.tbans.commands;
 
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
 import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.LanguageManager;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -10,16 +12,19 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 public class BlameCommand implements SimpleCommand {
 
+    private final ProxyServer server;
     private final BanManager banManager;
     private final LanguageManager languageManager;
     private static final MiniMessage mm = MiniMessage.miniMessage();
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
             .withZone(ZoneId.systemDefault());
 
-    public BlameCommand(BanManager banManager, LanguageManager languageManager) {
+    public BlameCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager) {
+        this.server = server;
         this.banManager = banManager;
         this.languageManager = languageManager;
     }
@@ -40,7 +45,19 @@ public class BlameCommand implements SimpleCommand {
         }
 
         String staffName = args[0];
-        List<BanManager.BanEvent> events = banManager.getEventsByExecutor(staffName);
+        UUID staffUuid;
+        if (server.getPlayer(staffName).isPresent()) {
+            staffUuid = server.getPlayer(staffName).get().getUniqueId();
+        } else {
+            try {
+                staffUuid = UUID.fromString(staffName);
+            } catch (IllegalArgumentException e) {
+                source.sendMessage(mm.deserialize(languageManager.getMessage("unban.not_found")));
+                return;
+            }
+        }
+
+        List<BanManager.BanEvent> events = banManager.getEventsByExecutor(staffUuid);
 
         if (events.isEmpty()) {
             String emptyMsg = languageManager.getMessage("blame.empty").replace("{staff}", staffName);
@@ -51,33 +68,54 @@ public class BlameCommand implements SimpleCommand {
         int totalActions = events.size();
         long banCount = events.stream().filter(e -> e.getType() == BanManager.BanEvent.Type.BAN).count();
         long unbanCount = events.stream().filter(e -> e.getType() == BanManager.BanEvent.Type.UNBAN).count();
+        long kickCount = events.stream().filter(e -> e.getType() == BanManager.BanEvent.Type.KICK).count();
 
         String header = languageManager.getMessage("blame.header").replace("{staff}", staffName);
         source.sendMessage(mm.deserialize(header));
-        
+
         String totals = languageManager.getMessage("blame.totals")
                 .replace("{total}", String.valueOf(totalActions))
                 .replace("{bans}", String.valueOf(banCount))
                 .replace("{unbans}", String.valueOf(unbanCount));
         source.sendMessage(mm.deserialize(totals));
-        
+        source.sendMessage(mm.deserialize("<gray>Kicks: <yellow>" + kickCount));
+
         source.sendMessage(mm.deserialize(languageManager.getMessage("blame.recent_header")));
 
         int startIndex = Math.max(0, events.size() - 5);
         for (int i = events.size() - 1; i >= startIndex; i--) {
             BanManager.BanEvent event = events.get(i);
             String date = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getTimestamp()));
-            String typeColor = event.getType() == BanManager.BanEvent.Type.BAN ? 
-                languageManager.getMessage("blame.type_ban") : languageManager.getMessage("blame.type_unban");
-            
+            String typeColor;
+            if (event.getType() == BanManager.BanEvent.Type.BAN) {
+                typeColor = languageManager.getMessage("blame.type_ban");
+            } else if (event.getType() == BanManager.BanEvent.Type.UNBAN) {
+                typeColor = languageManager.getMessage("blame.type_unban");
+            } else {
+                typeColor = "<yellow>KICK</yellow>";
+            }
+
             String actionLine = languageManager.getMessage("blame.action_line")
                     .replace("{date}", date)
                     .replace("{type}", typeColor)
-                    .replace("{target}", event.getTargetName())
+                    .replace("{target}", event.getTargetUUID().toString())
                     .replace("{reason}", event.getReason());
             source.sendMessage(mm.deserialize(actionLine));
         }
-        
+
         source.sendMessage(mm.deserialize(languageManager.getMessage("blame.footer")));
+    }
+
+    @Override
+    public List<String> suggest(Invocation invocation) {
+        String[] args = invocation.arguments();
+        if (args.length <= 1) {
+            String prefix = args.length == 0 ? "" : args[0].toLowerCase();
+            return server.getAllPlayers().stream()
+                    .map(Player::getUsername)
+                    .filter(name -> name.toLowerCase().startsWith(prefix))
+                    .toList();
+        }
+        return List.of();
     }
 }

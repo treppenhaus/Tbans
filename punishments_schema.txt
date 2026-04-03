@@ -1,0 +1,19 @@
+﻿L48652: CREATE TABLE `libertybans_punishments` (
+L48653:   `id` bigint(20) NOT NULL,
+L48654:   `type` smallint(6) NOT NULL,
+L48655:   `operator` binary(16) NOT NULL,
+L48656:   `reason` varchar(256) NOT NULL,
+L48657:   `scope` varchar(32) NOT NULL,
+L48658:   `start` bigint(20) NOT NULL,
+L48659:   `end` bigint(20) NOT NULL,
+L48660:   `track` int(11) DEFAULT NULL,
+L48661:   `scope_id` int(11) DEFAULT NULL,
+L48662:   UNIQUE KEY `libertybans_punishment_id_uniqueness` (`id`),
+L48663:   KEY `libertybans_punishment_operator_index` (`operator`),
+L48664:   KEY `libertybans_punishment_start_index` (`start`),
+L48665:   KEY `libertybans_punishment_end_index` (`end`),
+L48666:   CONSTRAINT `libertybans_punishment_type_validity` CHECK (`type` >= 0 and `type` <= 3),
+L48667:   CONSTRAINT `libertybans_punishment_duration_positivity` CHECK (`end` = 0 or `end` > `start`)
+L48668: ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+L48669: /*!40101 SET character_set_client = @saved_cs_client */;
+L48670: 

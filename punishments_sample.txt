@@ -1,0 +1,10 @@
+﻿L48677: INSERT INTO `libertybans_punishments` VALUES
+L48678: (1,0,'��oA-L񌤟q���','No reason stated.','',1772389923,0,NULL,NULL),
+L48679: (1001,3,'��+��[A[�@{|��','No reason stated.','',1772412373,0,NULL,NULL),
+L48680: (2001,1,'%�*��Em��M�!�B�','No reason stated.','',1772562891,0,NULL,NULL),
+L48681: (2002,0,'%�*��Em��M�!�B�','No reason stated.','',1772562917,0,NULL,NULL),
+L48682: (2003,1,'%�*��Em��M�!�B�','10','',1772563226,0,NULL,NULL),
+L48683: (2004,1,'%�*��Em��M�!�B�','skill issue','',1772563245,1772563845,NULL,NULL),
+L48684: (2005,3,'��oA-L񌤟q���','Maintenance','',1772577482,0,NULL,NULL),
+L48685: (2006,0,'%�*��Em��M�!�B�','N-Wort','',1772648643,1773253443,NULL,NULL),
+L48686: (2007,1,'��+��[A[�@{|��','1s','',1772649686,0,NULL,NULL),

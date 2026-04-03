@@ -1,0 +1,8 @@
+{
+  "id": "tbans",
+  "name": "${project.name}",
+  "version": "${project.version}",
+  "description": "${project.description}",
+  "authors": ["treppi"],
+  "main": "eu.treppi.tbans.core.BanPlugin"
+}
