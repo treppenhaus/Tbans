@@ -4,6 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import eu.treppi.tbans.manager.BanEvent;
 import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.LanguageManager;
 import eu.treppi.tbans.util.TimeUtils;
@@ -65,7 +66,7 @@ public class HistoryCommand implements SimpleCommand {
     }
 
     private void showHistory(CommandSource source, UUID targetUuid, String targetName) {
-        List<BanManager.BanEvent> events = banManager.getEvents(targetUuid);
+        List<BanEvent> events = banManager.getEvents(targetUuid);
 
         String banStatus;
         if (events.isEmpty()) {
@@ -88,19 +89,19 @@ public class HistoryCommand implements SimpleCommand {
             return;
         }
 
-        for (BanManager.BanEvent event : events) {
+        for (BanEvent event : events) {
             String date = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getTimestamp()));
             String typeColor;
-            if (event.getType() == BanManager.BanEvent.Type.BAN) {
+            if (event.getType() == BanEvent.Type.BAN) {
                 typeColor = languageManager.getMessage("blame.type_ban");
-            } else if (event.getType() == BanManager.BanEvent.Type.UNBAN) {
+            } else if (event.getType() == BanEvent.Type.UNBAN) {
                 typeColor = languageManager.getMessage("blame.type_unban");
             } else {
                 typeColor = "<yellow>KICK</yellow>";
             }
             
             String expiryInfo = "";
-            if (event.getType() == BanManager.BanEvent.Type.BAN) {
+            if (event.getType() == BanEvent.Type.BAN) {
                 if (event.getExpiry() == -1) {
                     expiryInfo = languageManager.getMessage("history.expiry_permanent");
                 } else if (event.getExpiry() > 0) {

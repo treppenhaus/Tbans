@@ -3,6 +3,7 @@ package eu.treppi.tbans.core;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.proxy.Player;
+import eu.treppi.tbans.manager.BanEvent;
 import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.LanguageManager;
 import eu.treppi.tbans.util.TimeUtils;
@@ -32,7 +33,7 @@ public class BanListener {
         banManager.updateNameCache(player.getUniqueId(), player.getUsername());
         
         if (banManager.isBanned(player.getUniqueId())) {
-            BanManager.BanEvent latestBan = banManager.getLatestBan(player.getUniqueId());
+            BanEvent latestBan = banManager.getLatestBan(player.getUniqueId());
             if (latestBan == null) return;
             
             String expiryStr;

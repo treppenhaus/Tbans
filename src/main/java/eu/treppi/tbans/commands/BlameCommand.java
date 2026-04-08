@@ -4,6 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import eu.treppi.tbans.manager.BanEvent;
 import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.LanguageManager;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -62,7 +63,7 @@ public class BlameCommand implements SimpleCommand {
     }
 
     private void showBlame(CommandSource source, UUID staffUuid, String staffName) {
-        List<BanManager.BanEvent> events = banManager.getEventsByExecutor(staffUuid);
+        List<BanEvent> events = banManager.getEventsByExecutor(staffUuid);
 
         if (events.isEmpty()) {
             String emptyMsg = languageManager.getMessage("blame.empty").replace("{staff}", staffName);
@@ -71,9 +72,9 @@ public class BlameCommand implements SimpleCommand {
         }
 
         int totalActions = events.size();
-        long banCount = events.stream().filter(e -> e.getType() == BanManager.BanEvent.Type.BAN).count();
-        long unbanCount = events.stream().filter(e -> e.getType() == BanManager.BanEvent.Type.UNBAN).count();
-        long kickCount = events.stream().filter(e -> e.getType() == BanManager.BanEvent.Type.KICK).count();
+        long banCount = events.stream().filter(e -> e.getType() == BanEvent.Type.BAN).count();
+        long unbanCount = events.stream().filter(e -> e.getType() == BanEvent.Type.UNBAN).count();
+        long kickCount = events.stream().filter(e -> e.getType() == BanEvent.Type.KICK).count();
 
         String header = languageManager.getMessage("blame.header").replace("{staff}", staffName);
         source.sendMessage(mm.deserialize(header));
@@ -89,12 +90,12 @@ public class BlameCommand implements SimpleCommand {
 
         int startIndex = Math.max(0, events.size() - 5);
         for (int i = events.size() - 1; i >= startIndex; i--) {
-            BanManager.BanEvent event = events.get(i);
+            BanEvent event = events.get(i);
             String date = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getTimestamp()));
             String typeColor;
-            if (event.getType() == BanManager.BanEvent.Type.BAN) {
+            if (event.getType() == BanEvent.Type.BAN) {
                 typeColor = languageManager.getMessage("blame.type_ban");
-            } else if (event.getType() == BanManager.BanEvent.Type.UNBAN) {
+            } else if (event.getType() == BanEvent.Type.UNBAN) {
                 typeColor = languageManager.getMessage("blame.type_unban");
             } else {
                 typeColor = "<yellow>KICK</yellow>";
