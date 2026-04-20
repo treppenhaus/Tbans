@@ -12,6 +12,9 @@ import eu.treppi.tbans.commands.HistoryCommand;
 import eu.treppi.tbans.commands.KickCommand;
 import eu.treppi.tbans.commands.UnbanCommand;
 import eu.treppi.tbans.manager.BanManager;
+import eu.treppi.tbans.manager.ConfigManager;
+import eu.treppi.tbans.manager.IpLogManager;
+import eu.treppi.tbans.manager.LanguageManager;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -25,14 +28,18 @@ public class BanPlugin {
 
         private final ProxyServer server;
         private final BanManager banManager;
-        private final eu.treppi.tbans.manager.LanguageManager languageManager;
+        private final LanguageManager languageManager;
+        private final ConfigManager configManager;
+        private final IpLogManager ipLogManager;
 
         @Inject
         public BanPlugin(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
                 this.server = server;
                 this.logger = logger;
                 this.banManager = new BanManager(dataDirectory);
-                this.languageManager = new eu.treppi.tbans.manager.LanguageManager(dataDirectory, "en_EN");
+                this.languageManager = new LanguageManager(dataDirectory, "en_EN");
+                this.configManager = new ConfigManager(dataDirectory);
+                this.ipLogManager = new IpLogManager(dataDirectory);
         }
 
         @Subscribe
@@ -56,7 +63,7 @@ public class BanPlugin {
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("blame").build(),
                                 new BlameCommand(server, banManager, languageManager));
-                server.getEventManager().register(this, new BanListener(banManager, languageManager));
+                server.getEventManager().register(this, new BanListener(banManager, languageManager, configManager, ipLogManager));
                 logger.info("TBans has been enabled!");
         }
 }
