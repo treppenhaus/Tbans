@@ -19,14 +19,15 @@ public class ConfigManager {
             dataDirectory.toFile().mkdirs();
         }
         this.configFile = dataDirectory.resolve("config.yml").toFile();
-        
+
         DumperOptions options = new DumperOptions();
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         options.setPrettyFlow(true);
         this.yaml = new Yaml(options);
-        
+
         loadConfig();
         checkSalt();
+        checkAltDays();
     }
 
     private void loadConfig() {
@@ -38,7 +39,8 @@ public class ConfigManager {
 
         try (InputStream in = new FileInputStream(configFile)) {
             configData = yaml.load(in);
-            if (configData == null) configData = new HashMap<>();
+            if (configData == null)
+                configData = new HashMap<>();
         } catch (IOException e) {
             e.printStackTrace();
             configData = new HashMap<>();
@@ -61,6 +63,21 @@ public class ConfigManager {
         }
     }
 
+    private void checkAltDays() {
+        if (!configData.containsKey("alt-link-days")) {
+            configData.put("alt-link-days", 7);
+            saveConfig();
+        }
+    }
+
+    public int getAltLinkDays() {
+        Object days = configData.get("alt-link-days");
+        if (days instanceof Number) {
+            return ((Number) days).intValue();
+        }
+        return 7;
+    }
+
     public long getSalt() {
         Object salt = configData.get("salt");
         if (salt instanceof Number) {
@@ -68,7 +85,8 @@ public class ConfigManager {
         } else if (salt instanceof String) {
             try {
                 return Long.parseLong((String) salt);
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         return 0L;
     }
