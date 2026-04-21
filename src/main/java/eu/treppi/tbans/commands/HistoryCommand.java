@@ -49,7 +49,21 @@ public class HistoryCommand implements SimpleCommand {
         }
 
         String targetName = args[0];
-        
+
+        // Check if it's a ban code
+        BanManager.CodeLookupResult lookup = banManager.lookupByCode(targetName);
+        if (lookup != null) {
+            if (lookup.type == BanManager.CodeLookupResult.Type.UUID) {
+                UUID uuid = UUID.fromString(lookup.value);
+                String resolvedName = banManager.getNameFromUuid(uuid);
+                showHistory(source, uuid, resolvedName);
+                return;
+            } else if (lookup.type == BanManager.CodeLookupResult.Type.IP_HASH) {
+                showIpHistory(source, lookup.value);
+                return;
+            }
+        }
+
         // Asynchronous resolution
         banManager.resolveUuid(targetName).thenAccept(uuid -> {
             if (uuid == null) {
@@ -99,7 +113,7 @@ public class HistoryCommand implements SimpleCommand {
             } else {
                 typeColor = "<yellow>KICK</yellow>";
             }
-            
+
             String expiryInfo = "";
             if (event.getType() == BanEvent.Type.BAN) {
                 if (event.getExpiry() == -1) {
@@ -118,17 +132,53 @@ public class HistoryCommand implements SimpleCommand {
                     }
                 }
             }
-            
+
             // USE NAME INSTEAD OF UUID
             String executorName = banManager.getNameFromUuid(event.getExecutorUUID());
-            
+
+            String codeInfo = event.getCode() != null ? " <gray>[Code: " + event.getCode() + "]</gray>" : "";
+
             String msg = languageManager.getMessage("history.action_line")
                     .replace("{date}", date)
                     .replace("{type}", typeColor)
                     .replace("{executor}", executorName)
                     .replace("{reason}", event.getReason())
-                    .replace("{expiry_info}", expiryInfo);
-            
+                    .replace("{expiry_info}", expiryInfo) + codeInfo;
+
+            source.sendMessage(mm.deserialize(msg));
+        }
+        source.sendMessage(mm.deserialize(divider));
+    }
+
+    private void showIpHistory(CommandSource source, String ipHash) {
+        List<BanEvent> events = banManager.getIpEvents(ipHash);
+        String header = "<gradient:#ff5555:#aa0000><b>History for IP Hash: " + ipHash.substring(0, 10)
+                + "...</b></gradient>";
+        source.sendMessage(mm.deserialize(header));
+
+        String divider = languageManager.getMessage("history.divider");
+        source.sendMessage(mm.deserialize(divider));
+
+        if (events.isEmpty()) {
+            source.sendMessage(mm.deserialize("<red>No IP history found."));
+            return;
+        }
+
+        for (BanEvent event : events) {
+            String date = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getTimestamp()));
+            String typeColor = event.getType() == BanEvent.Type.BAN ? "<red>BAN</red>" : "<green>UNBAN</green>";
+
+            String expiryInfo = "";
+            if (event.getType() == BanEvent.Type.BAN && event.getExpiry() > 0) {
+                expiryInfo = " <gray>(until " + DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(event.getExpiry()))
+                        + ")</gray>";
+            }
+
+            String executorName = banManager.getNameFromUuid(event.getExecutorUUID());
+            String codeInfo = event.getCode() != null ? " <gray>[Code: " + event.getCode() + "]</gray>" : "";
+
+            String msg = "<gray>[" + date + "] " + typeColor + " by " + executorName + ": " + event.getReason()
+                    + expiryInfo + codeInfo;
             source.sendMessage(mm.deserialize(msg));
         }
         source.sendMessage(mm.deserialize(divider));
@@ -143,7 +193,7 @@ public class HistoryCommand implements SimpleCommand {
         String[] args = invocation.arguments();
         if (args.length <= 1) {
             String prefix = args.length == 0 ? "" : args[0].toLowerCase();
-            
+
             Set<String> suggestions = new HashSet<>();
             suggestions.addAll(server.getAllPlayers().stream().map(Player::getUsername).toList());
             suggestions.addAll(banManager.getAllCachedNames());

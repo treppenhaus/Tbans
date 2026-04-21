@@ -403,10 +403,33 @@ public class ApiManager {
             }
             String target = parts[3];
 
+            // Check if code
+            BanManager.CodeLookupResult lookup = banManager.lookupByCode(target);
+            if (lookup != null) {
+                try {
+                    if (lookup.type == BanManager.CodeLookupResult.Type.UUID) {
+                        UUID uuid = UUID.fromString(lookup.value);
+                        sendResponse(exchange, 200, Map.of(
+                                "player", banManager.getNameFromUuid(uuid),
+                                "uuid", uuid.toString(),
+                                "history", banManager.getEvents(uuid),
+                                "is_banned", banManager.isBanned(uuid)));
+                    } else {
+                        sendResponse(exchange, 200, Map.of(
+                                "ip_hash", lookup.value,
+                                "history", banManager.getIpEvents(lookup.value),
+                                "is_banned", banManager.isIpBanned(lookup.value)));
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return;
+            }
+
             banManager.resolveUuid(target).thenAccept(uuid -> {
                 try {
                     if (uuid == null) {
-                        sendResponse(exchange, 404, Map.of("error", "Player not found"));
+                        sendResponse(exchange, 404, Map.of("error", "Player not found or invalid code"));
                         return;
                     }
                     sendResponse(exchange, 200, Map.of(

@@ -38,11 +38,12 @@ Returns potential secondary accounts linked via IP hashing.
 ```
 
 ### 2. Get Punishment History
-Returns the full history of bans, unbans, and kicks for a player.
+Returns the full history of bans, unbans, and kicks for a player or a specific ban code.
 
-- **URL:** `/api/history/<player_name_or_uuid>`
+- **URL:** `/api/history/<player_name_or_uuid_or_code>`
 - **Method:** `GET`
-- **Success Response (200 OK):**
+- **Success Response (200 OK) - Player Lookup:**
+  *Returned if the target is a Player Name, UUID, or a Ban Code associated with a player.*
 ```json
 {
   "player": "treppi",
@@ -55,7 +56,27 @@ Returns the full history of bans, unbans, and kicks for a player.
       "executorUUID": "...",
       "timestamp": 1620000000000,
       "expiry": -1,
-      "reason": "Example Reason"
+      "reason": "Example Reason",
+      "code": "A1B2C3"
+    }
+  ]
+}
+```
+
+- **Success Response (200 OK) - IP Code Lookup:**
+  *Returned if the target is a Ban Code associated with an IP Ban.*
+```json
+{
+  "ip_hash": "...",
+  "is_banned": true,
+  "history": [
+    {
+      "type": "BAN",
+      "executorUUID": "...",
+      "timestamp": 1620000000000,
+      "expiry": -1,
+      "reason": "Example IP Ban",
+      "code": "D4E5F6"
     }
   ]
 }

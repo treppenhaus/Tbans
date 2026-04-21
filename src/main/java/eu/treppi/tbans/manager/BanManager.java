@@ -172,10 +172,50 @@ public class BanManager {
         return false;
     }
 
+    public static class CodeLookupResult {
+        public enum Type {
+            UUID, IP_HASH
+        }
+
+        public final Type type;
+        public final String value;
+
+        public CodeLookupResult(Type type, String value) {
+            this.type = type;
+            this.value = value;
+        }
+    }
+
+    public CodeLookupResult lookupByCode(String code) {
+        if (code == null)
+            return null;
+        for (Map.Entry<UUID, List<BanEvent>> entry : playerEvents.entrySet()) {
+            for (BanEvent event : entry.getValue()) {
+                if (code.equalsIgnoreCase(event.getCode())) {
+                    return new CodeLookupResult(CodeLookupResult.Type.UUID, entry.getKey().toString());
+                }
+            }
+        }
+        for (Map.Entry<String, List<BanEvent>> entry : ipEvents.entrySet()) {
+            for (BanEvent event : entry.getValue()) {
+                if (code.equalsIgnoreCase(event.getCode())) {
+                    return new CodeLookupResult(CodeLookupResult.Type.IP_HASH, entry.getKey());
+                }
+            }
+        }
+        return null;
+    }
+
     public List<BanEvent> getEvents(UUID uuid) {
         if (uuid == null)
             return new ArrayList<>();
         return playerEvents.getOrDefault(uuid, new ArrayList<>());
+    }
+
+    public List<BanEvent> getIpEvents(String ipHash) {
+        if (ipHash == null)
+            return new ArrayList<>();
+        return ipEvents.getOrDefault(ipHash, new ArrayList<>());
     }
 
     private String generateUniqueCode() {
