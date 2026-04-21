@@ -9,6 +9,7 @@ A lightweight, simple, and customizable ban plugin for Velocity proxies, featuri
 - **Broadcast System:** Staff members can receive notifications when punishments are executed.
 - **Staff Protection:** Allows securing specified players or staff members from being punished by others.
 - **Audit System:** Keep staff accountable via `/blame`, and easily view a player's previous infractions via `/history`.
+- **Automated Builds:** Every push to `main` automatically builds and publishes a release with incremental versioning (e.g., `1.0-SNAPSHOT-1`).
 
 ## Commands & Permissions
 
