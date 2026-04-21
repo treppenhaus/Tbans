@@ -1,7 +1,6 @@
 package eu.treppi.tbans.commands;
 
 import com.velocitypowered.api.command.SimpleCommand;
-import com.velocitypowered.api.proxy.ProxyServer;
 import eu.treppi.tbans.manager.LanguageManager;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
