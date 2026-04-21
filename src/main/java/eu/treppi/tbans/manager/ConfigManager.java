@@ -26,18 +26,12 @@ public class ConfigManager {
         this.yaml = new Yaml(options);
 
         loadConfig();
-        checkSalt();
-        checkAltDays();
-        checkApiPort();
-        checkApiToken();
+        checkConfig();
     }
 
     public void reload() {
         loadConfig();
-        checkSalt();
-        checkAltDays();
-        checkApiPort();
-        checkApiToken();
+        checkConfig();
     }
 
     private void loadConfig() {
@@ -65,32 +59,30 @@ public class ConfigManager {
         }
     }
 
-    private void checkSalt() {
-        if (!configData.containsKey("salt")) {
-            long salt = new Random().nextLong();
-            configData.put("salt", salt);
-            saveConfig();
-        }
-    }
+    private void checkConfig() {
+        boolean changed = false;
 
-    private void checkAltDays() {
+        if (!configData.containsKey("salt")) {
+            configData.put("salt", new Random().nextLong());
+            changed = true;
+        }
+
         if (!configData.containsKey("alt-link-days")) {
             configData.put("alt-link-days", 7);
-            saveConfig();
+            changed = true;
         }
-    }
 
-    private void checkApiPort() {
         if (!configData.containsKey("api-port")) {
             configData.put("api-port", 8869);
-            saveConfig();
+            changed = true;
         }
-    }
 
-    private void checkApiToken() {
         if (!configData.containsKey("api-token")) {
-            String token = java.util.UUID.randomUUID().toString();
-            configData.put("api-token", token);
+            configData.put("api-token", java.util.UUID.randomUUID().toString());
+            changed = true;
+        }
+
+        if (changed) {
             saveConfig();
         }
     }
