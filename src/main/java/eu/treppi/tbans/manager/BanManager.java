@@ -42,20 +42,27 @@ public class BanManager {
         loadNames();
     }
 
-    public void banPlayer(UUID target, UUID executor, long durationMillis, String reason) {
+    public BanEvent banPlayer(UUID target, UUID executor, long durationMillis, String reason) {
         long timestamp = System.currentTimeMillis();
         long expiry = (durationMillis == -1) ? -1 : (timestamp + durationMillis);
-        addEvent(target, new BanEvent(BanEvent.Type.BAN, target, executor, timestamp, expiry, reason));
+        String code = generateUniqueCode();
+        BanEvent event = new BanEvent(BanEvent.Type.BAN, target, executor, timestamp, expiry, reason, code);
+        addEvent(target, event);
+        return event;
     }
 
-    public void unbanPlayer(UUID target, UUID executor, String reason) {
+    public BanEvent unbanPlayer(UUID target, UUID executor, String reason) {
         long timestamp = System.currentTimeMillis();
-        addEvent(target, new BanEvent(BanEvent.Type.UNBAN, target, executor, timestamp, -1, reason));
+        BanEvent event = new BanEvent(BanEvent.Type.UNBAN, target, executor, timestamp, -1, reason);
+        addEvent(target, event);
+        return event;
     }
 
-    public void kickPlayer(UUID target, UUID executor, String reason) {
+    public BanEvent kickPlayer(UUID target, UUID executor, String reason) {
         long timestamp = System.currentTimeMillis();
-        addEvent(target, new BanEvent(BanEvent.Type.KICK, target, executor, timestamp, -1, reason));
+        BanEvent event = new BanEvent(BanEvent.Type.KICK, target, executor, timestamp, -1, reason);
+        addEvent(target, event);
+        return event;
     }
 
     private void addEvent(UUID target, BanEvent event) {
@@ -63,15 +70,20 @@ public class BanManager {
         saveBans();
     }
 
-    public void banIp(String ipHash, UUID executor, long durationMillis, String reason) {
+    public BanEvent banIp(String ipHash, UUID executor, long durationMillis, String reason) {
         long timestamp = System.currentTimeMillis();
         long expiry = (durationMillis == -1) ? -1 : (timestamp + durationMillis);
-        addIpEvent(ipHash, new BanEvent(BanEvent.Type.BAN, null, executor, timestamp, expiry, reason));
+        String code = generateUniqueCode();
+        BanEvent event = new BanEvent(BanEvent.Type.BAN, null, executor, timestamp, expiry, reason, code);
+        addIpEvent(ipHash, event);
+        return event;
     }
 
-    public void unbanIp(String ipHash, UUID executor, String reason) {
+    public BanEvent unbanIp(String ipHash, UUID executor, String reason) {
         long timestamp = System.currentTimeMillis();
-        addIpEvent(ipHash, new BanEvent(BanEvent.Type.UNBAN, null, executor, timestamp, -1, reason));
+        BanEvent event = new BanEvent(BanEvent.Type.UNBAN, null, executor, timestamp, -1, reason);
+        addIpEvent(ipHash, event);
+        return event;
     }
 
     private void addIpEvent(String ipHash, BanEvent event) {
@@ -142,10 +154,42 @@ public class BanManager {
         return events;
     }
 
+    public boolean isCodeInUse(String code) {
+        if (code == null)
+            return false;
+        for (List<BanEvent> history : playerEvents.values()) {
+            for (BanEvent event : history) {
+                if (code.equalsIgnoreCase(event.getCode()))
+                    return true;
+            }
+        }
+        for (List<BanEvent> history : ipEvents.values()) {
+            for (BanEvent event : history) {
+                if (code.equalsIgnoreCase(event.getCode()))
+                    return true;
+            }
+        }
+        return false;
+    }
+
     public List<BanEvent> getEvents(UUID uuid) {
         if (uuid == null)
             return new ArrayList<>();
         return playerEvents.getOrDefault(uuid, new ArrayList<>());
+    }
+
+    private String generateUniqueCode() {
+        String chars = "0123456789ABCDEF";
+        java.util.Random random = new java.util.Random();
+        String code;
+        do {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 6; i++) {
+                sb.append(chars.charAt(random.nextInt(chars.length())));
+            }
+            code = sb.toString();
+        } while (isCodeInUse(code));
+        return code;
     }
 
     public Map<UUID, List<BanEvent>> getAllEvents() {
@@ -230,10 +274,24 @@ public class BanManager {
         try (Reader reader = new FileReader(storageFile)) {
             playerEvents = GSON.fromJson(reader, new TypeToken<Map<UUID, List<BanEvent>>>() {
             }.getType());
-            if (playerEvents == null)
+            if (playerEvents == null) {
                 playerEvents = new HashMap<>();
+            } else {
+                migrateCodes(playerEvents);
+            }
         } catch (IOException e) {
             e.printStackTrace();
+            playerEvents = new HashMap<>();
+        }
+    }
+
+    private <T> void migrateCodes(Map<T, List<BanEvent>> eventsMap) {
+        for (List<BanEvent> events : eventsMap.values()) {
+            for (BanEvent event : events) {
+                if (event.getType() == BanEvent.Type.BAN && event.getCode() == null) {
+                    event.setCode(generateUniqueCode());
+                }
+            }
         }
     }
 
@@ -277,10 +335,14 @@ public class BanManager {
         try (Reader reader = new FileReader(ipStorageFile)) {
             ipEvents = GSON.fromJson(reader, new TypeToken<Map<String, List<BanEvent>>>() {
             }.getType());
-            if (ipEvents == null)
+            if (ipEvents == null) {
                 ipEvents = new HashMap<>();
+            } else {
+                migrateCodes(ipEvents);
+            }
         } catch (IOException e) {
             e.printStackTrace();
+            ipEvents = new HashMap<>();
         }
     }
 

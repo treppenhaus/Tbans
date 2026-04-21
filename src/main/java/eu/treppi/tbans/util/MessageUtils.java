@@ -4,7 +4,7 @@ import eu.treppi.tbans.manager.ConfigManager;
 
 public class MessageUtils {
     public static String format(String msg, String target, String executor, String duration, String reason,
-            ConfigManager config) {
+            String code, ConfigManager config) {
         String headFormat = config.getHeadFormat();
         String targetHead = target != null ? headFormat.replace("{player}", target) : "";
         String executorHead = executor != null ? headFormat.replace("{player}", executor) : "";
@@ -14,6 +14,7 @@ public class MessageUtils {
                 .replace("{executor}", executor != null ? executor : "Console")
                 .replace("{executor_head}", executorHead)
                 .replace("{duration}", duration != null ? duration : "Permanent")
-                .replace("{reason}", reason != null ? reason : "No reason provided.");
+                .replace("{reason}", reason != null ? reason : "No reason provided.")
+                .replace("{ban_code}", code != null ? code : "Unknown");
     }
 }

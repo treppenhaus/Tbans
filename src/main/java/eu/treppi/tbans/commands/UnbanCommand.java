@@ -4,6 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import eu.treppi.tbans.manager.BanEvent;
 import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.ConfigManager;
 import eu.treppi.tbans.manager.LanguageManager;
@@ -73,14 +74,14 @@ public class UnbanCommand implements SimpleCommand {
 
         UUID executorUuid = source instanceof Player ? ((Player) source).getUniqueId() : CONSOLE_UUID;
         String unbannerName = source instanceof Player ? ((Player) source).getUsername() : "Console";
-        banManager.unbanPlayer(targetUuid, executorUuid, reason);
+        BanEvent event = banManager.unbanPlayer(targetUuid, executorUuid, reason);
 
         String successMsg = MessageUtils.format(languageManager.getMessage("unban.success"), targetName, null, "",
-                reason, configManager);
+                reason, event.getCode(), configManager);
         source.sendMessage(mm.deserialize(successMsg));
 
         String broadcastMsg = MessageUtils.format(languageManager.getMessage("unban.broadcast"), targetName,
-                unbannerName, "", reason, configManager);
+                unbannerName, "", reason, event.getCode(), configManager);
         for (Player p : server.getAllPlayers()) {
             if (p.hasPermission("tbans.notify")) {
                 p.sendMessage(mm.deserialize(broadcastMsg));

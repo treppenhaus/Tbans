@@ -4,6 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import eu.treppi.tbans.manager.BanEvent;
 import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.ConfigManager;
 import eu.treppi.tbans.manager.IpLogManager;
@@ -111,7 +112,7 @@ public class BanIpCommand implements SimpleCommand {
     private void executeIpBan(CommandSource source, String hash, String targetName, UUID executorUuid,
             String executorName,
             long duration, String timeStr, String reason) {
-        banManager.banIp(hash, executorUuid, duration, reason);
+        BanEvent event = banManager.banIp(hash, executorUuid, duration, reason);
 
         // Disconnect players with this IP hash
         for (Player p : server.getAllPlayers()) {
@@ -120,7 +121,8 @@ public class BanIpCommand implements SimpleCommand {
             if (pHash.equals(hash)) {
                 String disconnectMsg = languageManager.getMessage("ban.disconnect_screen")
                         .replace("{duration}", timeStr)
-                        .replace("{reason}", reason + " (IP Ban)");
+                        .replace("{reason}", reason + " (IP Ban)")
+                        .replace("{ban_code}", event.getCode());
                 p.disconnect(mm.deserialize(disconnectMsg));
             }
         }
@@ -129,7 +131,7 @@ public class BanIpCommand implements SimpleCommand {
 
         // Broadcast to staff
         String broadcastMsg = MessageUtils.format(languageManager.getMessage("ban.broadcast"), targetName + " (IP)",
-                executorName, timeStr, reason, configManager);
+                executorName, timeStr, reason, event.getCode(), configManager);
 
         for (Player p : server.getAllPlayers()) {
             if (p.hasPermission("tbans.notify")) {

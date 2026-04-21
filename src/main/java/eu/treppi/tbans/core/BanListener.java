@@ -75,7 +75,8 @@ public class BanListener {
         String msg = languageManager.getMessage("ban.login_denied")
                 .replace("{reason}", latestBan.getReason())
                 .replace("{expiry}", expiryStr)
-                .replace("{left}", timeRemainingStr);
+                .replace("{left}", timeRemainingStr)
+                .replace("{ban_code}", latestBan.getCode());
 
         event.setResult(LoginEvent.ComponentResult.denied(mm.deserialize(msg)));
     }

@@ -4,6 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import eu.treppi.tbans.manager.BanEvent;
 import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.ConfigManager;
 import eu.treppi.tbans.manager.LanguageManager;
@@ -28,7 +29,8 @@ public class BanCommand implements SimpleCommand {
     private static final MiniMessage mm = MiniMessage.miniMessage();
     private static final UUID CONSOLE_UUID = new UUID(0, 0);
 
-    public BanCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager, ConfigManager configManager) {
+    public BanCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager,
+            ConfigManager configManager) {
         this.server = server;
         this.banManager = banManager;
         this.languageManager = languageManager;
@@ -91,26 +93,30 @@ public class BanCommand implements SimpleCommand {
     private void executeBan(CommandSource source, UUID targetUuid, String targetName, long duration, String timeStr,
             String reason) {
         Optional<Player> targetPlayer = server.getPlayer(targetUuid);
-        if (targetPlayer.isPresent()) {
-            if (targetPlayer.get().hasPermission("tbans.god")) {
-                source.sendMessage(mm.deserialize(languageManager.getMessage("ban.cannot_punish")));
-                return;
-            }
-            String disconnectMsg = languageManager.getMessage("ban.disconnect_screen")
-                    .replace("{duration}", timeStr)
-                    .replace("{reason}", reason);
-            targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
+        if (targetPlayer.isPresent() && targetPlayer.get().hasPermission("tbans.god")) {
+            source.sendMessage(mm.deserialize(languageManager.getMessage("ban.cannot_punish")));
+            return;
         }
 
         UUID bannerUuid = source instanceof Player ? ((Player) source).getUniqueId() : CONSOLE_UUID;
         String bannerName = source instanceof Player ? ((Player) source).getUsername() : "Console";
 
-        banManager.banPlayer(targetUuid, bannerUuid, duration, reason);
+        BanEvent event = banManager.banPlayer(targetUuid, bannerUuid, duration, reason);
 
-        String successMsg = MessageUtils.format(languageManager.getMessage("ban.success"), targetName, null, timeStr, reason, configManager);
+        if (targetPlayer.isPresent()) {
+            String disconnectMsg = languageManager.getMessage("ban.disconnect_screen")
+                    .replace("{duration}", timeStr)
+                    .replace("{reason}", reason)
+                    .replace("{ban_code}", event.getCode());
+            targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
+        }
+
+        String successMsg = MessageUtils.format(languageManager.getMessage("ban.success"), targetName, null, timeStr,
+                reason, event.getCode(), configManager);
         source.sendMessage(mm.deserialize(successMsg));
 
-        String broadcastMsg = MessageUtils.format(languageManager.getMessage("ban.broadcast"), targetName, bannerName, timeStr, reason, configManager);
+        String broadcastMsg = MessageUtils.format(languageManager.getMessage("ban.broadcast"), targetName, bannerName,
+                timeStr, reason, event.getCode(), configManager);
         for (Player p : server.getAllPlayers()) {
             if (p.hasPermission("tbans.notify")) {
                 p.sendMessage(mm.deserialize(broadcastMsg));

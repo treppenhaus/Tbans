@@ -4,6 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import eu.treppi.tbans.manager.BanEvent;
 import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.ConfigManager;
 import eu.treppi.tbans.manager.LanguageManager;
@@ -60,18 +61,19 @@ public class KickCommand implements SimpleCommand {
 
             UUID targetUuid = targetPlayer.get().getUniqueId();
             UUID executorUuid = source instanceof Player ? ((Player) source).getUniqueId() : CONSOLE_UUID;
-            banManager.kickPlayer(targetUuid, executorUuid, reason);
+            BanEvent event = banManager.kickPlayer(targetUuid, executorUuid, reason);
 
-            String disconnectMsg = languageManager.getMessage("kick.disconnect_screen").replace("{reason}", reason);
+            String disconnectMsg = languageManager.getMessage("kick.disconnect_screen")
+                    .replace("{reason}", reason);
             targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
 
             String successMsg = MessageUtils.format(languageManager.getMessage("kick.success"), targetName, null, "",
-                    reason, configManager);
+                    reason, null, configManager);
             source.sendMessage(mm.deserialize(successMsg));
 
             String executor = source instanceof Player ? ((Player) source).getUsername() : "Console";
             String broadcastMsg = MessageUtils.format(languageManager.getMessage("kick.broadcast"), targetName,
-                    executor, "", reason, configManager);
+                    executor, "", reason, null, configManager);
             for (Player p : server.getAllPlayers()) {
                 if (p.hasPermission("tbans.notify")) {
                     p.sendMessage(mm.deserialize(broadcastMsg));
