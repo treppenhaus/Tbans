@@ -21,6 +21,7 @@ import eu.treppi.tbans.manager.LanguageManager;
 import eu.treppi.tbans.manager.ApiManager;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import org.slf4j.Logger;
+import org.bstats.velocity.Metrics;
 
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -39,13 +40,16 @@ public class BanPlugin {
         private final ConfigManager configManager;
         private final IpLogManager ipLogManager;
         private final ApiManager apiManager;
+        private final Metrics.Factory metricsFactory;
         private String version = "unknown";
         private String buildNumber = "0";
 
         @Inject
-        public BanPlugin(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
+        public BanPlugin(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory,
+                        Metrics.Factory metricsFactory) {
                 this.server = server;
                 this.logger = logger;
+                this.metricsFactory = metricsFactory;
                 this.banManager = new BanManager(dataDirectory);
                 this.languageManager = new LanguageManager(dataDirectory, "en_EN");
                 this.configManager = new ConfigManager(dataDirectory);
@@ -100,6 +104,10 @@ public class BanPlugin {
                                 new BanListener(banManager, languageManager, configManager, ipLogManager));
 
                 apiManager.start();
+
+                int pluginId = 30882;
+                Metrics metrics = metricsFactory.make(this, pluginId);
+
                 logger.info("TBans has been enabled!");
                 logger.info("API server started on port {}", configManager.getApiPort());
         }
