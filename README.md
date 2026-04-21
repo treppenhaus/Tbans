@@ -35,6 +35,12 @@ In `config.yml`, you can customize:
 - `salt`: The security salt for IP hashing. Changing this will invalidate all existing links (useful for a "reset").
 - `alt-link-days`: The maximum time gap between connections on the same IP to be considered a direct link.
 
+## JSON API
+
+TBans features a minimalistic JSON API for external integrations, allowing you to manage bans, kicks, and view player history or linked accounts remotely.
+
+**Detailed documentation can be found here: [API.md](API.md)**
+
 ## Additional Permissions
 
 - `tbans.notify` : Players with this permission will receive broadcast messages whenever a player is banned, unbanned, or kicked.

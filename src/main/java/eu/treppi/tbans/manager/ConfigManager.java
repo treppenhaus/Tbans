@@ -28,6 +28,8 @@ public class ConfigManager {
         loadConfig();
         checkSalt();
         checkAltDays();
+        checkApiPort();
+        checkApiToken();
     }
 
     private void loadConfig() {
@@ -68,6 +70,34 @@ public class ConfigManager {
             configData.put("alt-link-days", 7);
             saveConfig();
         }
+    }
+
+    private void checkApiPort() {
+        if (!configData.containsKey("api-port")) {
+            configData.put("api-port", 8869);
+            saveConfig();
+        }
+    }
+
+    private void checkApiToken() {
+        if (!configData.containsKey("api-token")) {
+            String token = java.util.UUID.randomUUID().toString();
+            configData.put("api-token", token);
+            saveConfig();
+        }
+    }
+
+    public int getApiPort() {
+        Object port = configData.get("api-port");
+        if (port instanceof Number) {
+            return ((Number) port).intValue();
+        }
+        return 8869;
+    }
+
+    public String getApiToken() {
+        Object token = configData.get("api-token");
+        return token != null ? token.toString() : "";
     }
 
     public int getAltLinkDays() {
