@@ -19,6 +19,10 @@ public class LanguageManager {
         loadLanguage();
     }
 
+    public void reload() {
+        loadLanguage();
+    }
+
     private void loadLanguage() {
         if (!dataDirectory.toFile().exists()) {
             dataDirectory.toFile().mkdirs();

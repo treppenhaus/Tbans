@@ -12,6 +12,7 @@ import eu.treppi.tbans.commands.BlameCommand;
 import eu.treppi.tbans.commands.BanIpCommand;
 import eu.treppi.tbans.commands.HistoryCommand;
 import eu.treppi.tbans.commands.KickCommand;
+import eu.treppi.tbans.commands.TbansCommand;
 import eu.treppi.tbans.commands.UnbanCommand;
 import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.ConfigManager;
@@ -21,7 +22,9 @@ import eu.treppi.tbans.manager.ApiManager;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import org.slf4j.Logger;
 
+import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.Properties;
 
 @Plugin(id = "tbans", name = "Tbans", version = "1.0-SNAPSHOT", description = "lightweight simple ban plugin for velocity", authors = {
                 "treppi" })
@@ -36,6 +39,8 @@ public class BanPlugin {
         private final ConfigManager configManager;
         private final IpLogManager ipLogManager;
         private final ApiManager apiManager;
+        private String version = "unknown";
+        private String buildNumber = "0";
 
         @Inject
         public BanPlugin(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
@@ -46,6 +51,19 @@ public class BanPlugin {
                 this.configManager = new ConfigManager(dataDirectory);
                 this.ipLogManager = new IpLogManager(dataDirectory);
                 this.apiManager = new ApiManager(server, banManager, languageManager, configManager, ipLogManager);
+                loadVersionInfo();
+        }
+
+        private void loadVersionInfo() {
+                try (InputStream is = getClass().getClassLoader().getResourceAsStream("version.properties")) {
+                        if (is != null) {
+                                Properties props = new Properties();
+                                props.load(is);
+                                this.version = props.getProperty("version", "unknown");
+                                this.buildNumber = props.getProperty("build", "0");
+                        }
+                } catch (Exception ignored) {
+                }
         }
 
         @Subscribe
@@ -75,12 +93,22 @@ public class BanPlugin {
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("banip").build(),
                                 new BanIpCommand(server, banManager, languageManager, configManager, ipLogManager));
+                server.getCommandManager().register(
+                                server.getCommandManager().metaBuilder("tbans").build(),
+                                new TbansCommand(version, buildNumber, languageManager, this::reload));
                 server.getEventManager().register(this,
                                 new BanListener(banManager, languageManager, configManager, ipLogManager));
 
                 apiManager.start();
                 logger.info("TBans has been enabled!");
                 logger.info("API server started on port {}", configManager.getApiPort());
+        }
+
+        public void reload() {
+                configManager.reload();
+                languageManager.reload();
+                apiManager.stop();
+                apiManager.start();
         }
 
         @Subscribe

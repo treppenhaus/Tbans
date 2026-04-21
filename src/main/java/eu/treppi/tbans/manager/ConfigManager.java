@@ -32,6 +32,14 @@ public class ConfigManager {
         checkApiToken();
     }
 
+    public void reload() {
+        loadConfig();
+        checkSalt();
+        checkAltDays();
+        checkApiPort();
+        checkApiToken();
+    }
+
     private void loadConfig() {
         if (!configFile.exists()) {
             configData = new HashMap<>();
