@@ -8,6 +8,7 @@ import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.ConfigManager;
 import eu.treppi.tbans.manager.IpLogManager;
 import eu.treppi.tbans.manager.LanguageManager;
+import eu.treppi.tbans.util.MessageUtils;
 import eu.treppi.tbans.util.TimeUtils;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
@@ -127,11 +128,8 @@ public class BanIpCommand implements SimpleCommand {
         source.sendMessage(mm.deserialize("<green>IP Ban successful for <yellow>" + targetName));
 
         // Broadcast to staff
-        String broadcastMsg = languageManager.getMessage("ban.broadcast")
-                .replace("{player}", targetName + " (IP)")
-                .replace("{executor}", executorName)
-                .replace("{duration}", timeStr)
-                .replace("{reason}", reason);
+        String broadcastMsg = MessageUtils.format(languageManager.getMessage("ban.broadcast"), targetName + " (IP)",
+                executorName, timeStr, reason, configManager);
 
         for (Player p : server.getAllPlayers()) {
             if (p.hasPermission("tbans.notify")) {

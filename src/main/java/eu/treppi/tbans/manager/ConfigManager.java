@@ -82,6 +82,11 @@ public class ConfigManager {
             changed = true;
         }
 
+        if (!configData.containsKey("head-format")) {
+            configData.put("head-format", "");
+            changed = true;
+        }
+
         if (changed) {
             saveConfig();
         }
@@ -119,5 +124,10 @@ public class ConfigManager {
             }
         }
         return 0L;
+    }
+
+    public String getHeadFormat() {
+        Object head = configData.get("head-format");
+        return head != null ? head.toString() : "";
     }
 }

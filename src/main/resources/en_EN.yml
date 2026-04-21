@@ -4,8 +4,8 @@ no_permission: "{prefix}<#ff7396>You do not have permission to use this command!
 ban:
   usage: "{prefix}<#ff7396>Usage: /ban <player> <time> <reason></#ff7396>"
   invalid_time: "{prefix}<#ff7396>Invalid time format!</#ff7396>"
-  success: "<gradient:#8af0e6:#8bb0f5><b>SUCCESS</b></gradient> <#af86b3>»</#af86b3> <#d58af0>Banned <#8af0e6>{player}</#8af0e6> for <#8af0e6>{duration}</#8af0e6> (<#af86b3>{reason}</#af86b3>)</#d58af0>"
-  broadcast: "{prefix}<#af86b3>Player <#ff7396>{player}</#ff7396> was <b>banned</b> by <#8af0e6>{executor}</#8af0e6> for <#8af0e6>{duration}</#8af0e6> (<#d58af0>{reason}</#d58af0>)</#af86b3>"
+  success: "<gradient:#8af0e6:#8bb0f5><b>SUCCESS</b></gradient> <#af86b3>»</#af86b3> <#d58af0>Banned <#8af0e6>{target_head}{player}</#8af0e6> for <#8af0e6>{duration}</#8af0e6> (<#af86b3>{reason}</#af86b3>)</#d58af0>"
+  broadcast: "{prefix}<#af86b3>Player <#ff7396>{target_head}{player}</#ff7396> was <b>banned</b> by <#8af0e6>{executor_head}{executor}</#8af0e6> for <#8af0e6>{duration}</#8af0e6> (<#d58af0>{reason}</#d58af0>)</#af86b3>"
   cannot_punish: "{prefix}<#ff7396>You cannot ban this player!</#ff7396>"
   disconnect_screen: "<gradient:#ff7396:#f58be8><b>YOU ARE BANNED!</b></gradient>\n\n<#af86b3>Duration: <#8af0e6>{duration}</#8af0e6>\n<#af86b3>Reason: <#d58af0>{reason}</#d58af0>"
   not_found: "{prefix}<#ff7396>Player not found or not online!</#ff7396>"
@@ -14,15 +14,15 @@ ban:
 unban:
   usage: "{prefix}<#ff7396>Usage: /unban <player> [reason]</#ff7396>"
   not_banned: "{prefix}<#ff7396>This player is not banned!</#ff7396>"
-  success: "<gradient:#8af0e6:#8bb0f5><b>SUCCESS</b></gradient> <#af86b3>»</#af86b3> <#d58af0>Unbanned <#8af0e6>{player}</#8af0e6> (<#af86b3>{reason}</#af86b3>)</#d58af0>"
-  broadcast: "{prefix}<#af86b3>Player <#8bb0f5>{player}</#8bb0f5> was <b>unbanned</b> by <#8af0e6>{executor}</#8af0e6> (<#d58af0>{reason}</#d58af0>)</#af86b3>"
+  success: "<gradient:#8af0e6:#8bb0f5><b>SUCCESS</b></gradient> <#af86b3>»</#af86b3> <#d58af0>Unbanned <#8af0e6>{target_head}{player}</#8af0e6> (<#af86b3>{reason}</#af86b3>)</#d58af0>"
+  broadcast: "{prefix}<#af86b3>Player <#8bb0f5>{target_head}{player}</#8bb0f5> was <b>unbanned</b> by <#8af0e6>{executor_head}{executor}</#8af0e6> (<#d58af0>{reason}</#d58af0>)</#af86b3>"
   not_found: "{prefix}<#ff7396>Player not found or not online!</#ff7396>"
 
 kick:
   usage: "{prefix}<#ff7396>Usage: /kick <player> [reason]</#ff7396>"
   not_found: "{prefix}<#ff7396>Player not found or not online!</#ff7396>"
-  success: "<gradient:#8af0e6:#8bb0f5><b>SUCCESS</b></gradient> <#af86b3>»</#af86b3> <#d58af0>Kicked <#8af0e6>{player}</#8af0e6> (<#af86b3>{reason}</#af86b3>)</#d58af0>"
-  broadcast: "{prefix}<#af86b3>Player <#ff7396>{player}</#ff7396> was <b>kicked</b> by <#8af0e6>{executor}</#8af0e6> (<#d58af0>{reason}</#d58af0>)</#af86b3>"
+  success: "<gradient:#8af0e6:#8bb0f5><b>SUCCESS</b></gradient> <#af86b3>»</#af86b3> <#d58af0>Kicked <#8af0e6>{target_head}{player}</#8af0e6> (<#af86b3>{reason}</#af86b3>)</#d58af0>"
+  broadcast: "{prefix}<#af86b3>Player <#ff7396>{target_head}{player}</#ff7396> was <b>kicked</b> by <#8af0e6>{executor_head}{executor}</#8af0e6> (<#d58af0>{reason}</#d58af0>)</#af86b3>"
   cannot_punish: "{prefix}<#ff7396>You cannot kick this player!</#ff7396>"
   disconnect_screen: "<gradient:#ff7396:#f58be8><b>YOU WERE KICKED!</b></gradient>\n\n<#af86b3>Reason: <#d58af0>{reason}</#d58af0>\n\n<gradient:#8bb0f5:#f58be8>Please read our rules before rejoining.</gradient>"
 

@@ -70,10 +70,10 @@ public class BanPlugin {
         public void onProxyInitialization(ProxyInitializeEvent event) {
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("ban").build(),
-                                new BanCommand(server, banManager, languageManager));
+                                new BanCommand(server, banManager, languageManager, configManager));
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("unban").build(),
-                                new UnbanCommand(server, banManager, languageManager));
+                                new UnbanCommand(server, banManager, languageManager, configManager));
 
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("history").build(),
@@ -83,7 +83,7 @@ public class BanPlugin {
                                 new HistoryCommand(server, banManager, languageManager));
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("kick").build(),
-                                new KickCommand(server, banManager, languageManager));
+                                new KickCommand(server, banManager, languageManager, configManager));
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("blame").build(),
                                 new BlameCommand(server, banManager, languageManager));

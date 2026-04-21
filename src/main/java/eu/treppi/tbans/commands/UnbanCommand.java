@@ -5,7 +5,9 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import eu.treppi.tbans.manager.BanManager;
+import eu.treppi.tbans.manager.ConfigManager;
 import eu.treppi.tbans.manager.LanguageManager;
+import eu.treppi.tbans.util.MessageUtils;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.util.Arrays;
@@ -17,13 +19,16 @@ public class UnbanCommand implements SimpleCommand {
     private final ProxyServer server;
     private final BanManager banManager;
     private final LanguageManager languageManager;
+    private final ConfigManager configManager;
     private static final MiniMessage mm = MiniMessage.miniMessage();
     private static final UUID CONSOLE_UUID = new UUID(0, 0);
 
-    public UnbanCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager) {
+    public UnbanCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager,
+            ConfigManager configManager) {
         this.server = server;
         this.banManager = banManager;
         this.languageManager = languageManager;
+        this.configManager = configManager;
     }
 
     @Override
@@ -42,7 +47,8 @@ public class UnbanCommand implements SimpleCommand {
         }
 
         String targetName = args[0];
-        String reason = args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "No reason provided.";
+        String reason = args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length))
+                : "No reason provided.";
 
         // Asynchronous resolution
         banManager.resolveUuid(targetName).thenAccept(uuid -> {
@@ -69,15 +75,12 @@ public class UnbanCommand implements SimpleCommand {
         String unbannerName = source instanceof Player ? ((Player) source).getUsername() : "Console";
         banManager.unbanPlayer(targetUuid, executorUuid, reason);
 
-        String successMsg = languageManager.getMessage("unban.success")
-                .replace("{player}", targetName)
-                .replace("{reason}", reason);
+        String successMsg = MessageUtils.format(languageManager.getMessage("unban.success"), targetName, null, "",
+                reason, configManager);
         source.sendMessage(mm.deserialize(successMsg));
 
-        String broadcastMsg = languageManager.getMessage("unban.broadcast")
-                .replace("{player}", targetName)
-                .replace("{executor}", unbannerName)
-                .replace("{reason}", reason);
+        String broadcastMsg = MessageUtils.format(languageManager.getMessage("unban.broadcast"), targetName,
+                unbannerName, "", reason, configManager);
         for (Player p : server.getAllPlayers()) {
             if (p.hasPermission("tbans.notify")) {
                 p.sendMessage(mm.deserialize(broadcastMsg));

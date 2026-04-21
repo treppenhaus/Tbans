@@ -5,7 +5,9 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import eu.treppi.tbans.manager.BanManager;
+import eu.treppi.tbans.manager.ConfigManager;
 import eu.treppi.tbans.manager.LanguageManager;
+import eu.treppi.tbans.util.MessageUtils;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.util.Arrays;
@@ -18,13 +20,16 @@ public class KickCommand implements SimpleCommand {
     private final ProxyServer server;
     private final BanManager banManager;
     private final LanguageManager languageManager;
+    private final ConfigManager configManager;
     private static final MiniMessage mm = MiniMessage.miniMessage();
     private static final UUID CONSOLE_UUID = new UUID(0, 0);
 
-    public KickCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager) {
+    public KickCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager,
+            ConfigManager configManager) {
         this.server = server;
         this.banManager = banManager;
         this.languageManager = languageManager;
+        this.configManager = configManager;
     }
 
     @Override
@@ -43,7 +48,8 @@ public class KickCommand implements SimpleCommand {
         }
 
         String targetName = args[0];
-        String reason = args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "No reason provided.";
+        String reason = args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length))
+                : "No reason provided.";
 
         Optional<Player> targetPlayer = server.getPlayer(targetName);
         if (targetPlayer.isPresent()) {
@@ -58,17 +64,14 @@ public class KickCommand implements SimpleCommand {
 
             String disconnectMsg = languageManager.getMessage("kick.disconnect_screen").replace("{reason}", reason);
             targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
-            
-            String successMsg = languageManager.getMessage("kick.success")
-                    .replace("{player}", targetName)
-                    .replace("{reason}", reason);
+
+            String successMsg = MessageUtils.format(languageManager.getMessage("kick.success"), targetName, null, "",
+                    reason, configManager);
             source.sendMessage(mm.deserialize(successMsg));
 
             String executor = source instanceof Player ? ((Player) source).getUsername() : "Console";
-            String broadcastMsg = languageManager.getMessage("kick.broadcast")
-                    .replace("{player}", targetName)
-                    .replace("{executor}", executor)
-                    .replace("{reason}", reason);
+            String broadcastMsg = MessageUtils.format(languageManager.getMessage("kick.broadcast"), targetName,
+                    executor, "", reason, configManager);
             for (Player p : server.getAllPlayers()) {
                 if (p.hasPermission("tbans.notify")) {
                     p.sendMessage(mm.deserialize(broadcastMsg));

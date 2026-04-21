@@ -5,7 +5,9 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import eu.treppi.tbans.manager.BanManager;
+import eu.treppi.tbans.manager.ConfigManager;
 import eu.treppi.tbans.manager.LanguageManager;
+import eu.treppi.tbans.util.MessageUtils;
 import eu.treppi.tbans.util.TimeUtils;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
@@ -22,13 +24,15 @@ public class BanCommand implements SimpleCommand {
     private final ProxyServer server;
     private final BanManager banManager;
     private final LanguageManager languageManager;
+    private final ConfigManager configManager;
     private static final MiniMessage mm = MiniMessage.miniMessage();
     private static final UUID CONSOLE_UUID = new UUID(0, 0);
 
-    public BanCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager) {
+    public BanCommand(ProxyServer server, BanManager banManager, LanguageManager languageManager, ConfigManager configManager) {
         this.server = server;
         this.banManager = banManager;
         this.languageManager = languageManager;
+        this.configManager = configManager;
     }
 
     @Override
@@ -103,17 +107,10 @@ public class BanCommand implements SimpleCommand {
 
         banManager.banPlayer(targetUuid, bannerUuid, duration, reason);
 
-        String successMsg = languageManager.getMessage("ban.success")
-                .replace("{player}", targetName)
-                .replace("{duration}", timeStr)
-                .replace("{reason}", reason);
+        String successMsg = MessageUtils.format(languageManager.getMessage("ban.success"), targetName, null, timeStr, reason, configManager);
         source.sendMessage(mm.deserialize(successMsg));
 
-        String broadcastMsg = languageManager.getMessage("ban.broadcast")
-                .replace("{player}", targetName)
-                .replace("{executor}", bannerName)
-                .replace("{duration}", timeStr)
-                .replace("{reason}", reason);
+        String broadcastMsg = MessageUtils.format(languageManager.getMessage("ban.broadcast"), targetName, bannerName, timeStr, reason, configManager);
         for (Player p : server.getAllPlayers()) {
             if (p.hasPermission("tbans.notify")) {
                 p.sendMessage(mm.deserialize(broadcastMsg));
