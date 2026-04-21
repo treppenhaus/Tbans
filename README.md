@@ -17,8 +17,23 @@ A lightweight, simple, and customizable ban plugin for Velocity proxies, featuri
 | `/ban <player> <time> <reason>` | `tbans.ban` | Bans a player from the network for a specified time. |
 | `/unban <player> [reason]` | `tbans.unban` | Unbans a previously banned player. |
 | `/kick <player> [reason]` | `tbans.kick` | Kicks an online player from the proxy network. |
+| `/alts <player>` | `tbans.command.alts` | Search for linked accounts (alts) based on shared connection fingerprints. |
 | `/history <player>` (or `/checkban`) | `tbans.history` | Check a player's ban status and view their punishment history. |
 | `/blame <staff>` | `tbans.blame` | See the latest actions (bans, unbans) executed by a particular staff member. |
+
+## Alt Detection
+
+TBans includes a privacy-preserving alt-account detection system that identifies potential linked accounts without storing sensitive information.
+
+### How it works
+1. **IP Hashing:** When a player joins, their IP address is hashed using **SHA-256** combined with a unique **randomly generated salt** (stored in `config.yml`). Raw IP addresses are **never stored** on disk or in memory.
+2. **Link Window:** Accounts are considered "linked" if they have connected from the same hashed IP within a configurable timeframe (`alt-link-days`, default 7 days).
+3. **Recursive Search:** The `/alts` command performs a recursive search up to **20 hops**. This can identify "chains" of accounts (e.g., if Player A and Player B share IP 1, and Player B and Player C share IP 2, the system will identify all three as potentially linked).
+
+### Configuration
+In `config.yml`, you can customize:
+- `salt`: The security salt for IP hashing. Changing this will invalidate all existing links (useful for a "reset").
+- `alt-link-days`: The maximum time gap between connections on the same IP to be considered a direct link.
 
 ## Additional Permissions
 

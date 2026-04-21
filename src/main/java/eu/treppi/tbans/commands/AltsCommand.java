@@ -8,7 +8,6 @@ import eu.treppi.tbans.manager.BanManager;
 import eu.treppi.tbans.manager.ConfigManager;
 import eu.treppi.tbans.manager.IpLogManager;
 import eu.treppi.tbans.manager.LanguageManager;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.time.Instant;

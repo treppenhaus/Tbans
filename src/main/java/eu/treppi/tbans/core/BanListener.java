@@ -11,11 +11,9 @@ import eu.treppi.tbans.manager.LanguageManager;
 import eu.treppi.tbans.util.TimeUtils;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
-import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
 
 public class BanListener {
     private final BanManager banManager;
@@ -26,7 +24,8 @@ public class BanListener {
             .withZone(ZoneId.systemDefault());
     private static final MiniMessage mm = MiniMessage.miniMessage();
 
-    public BanListener(BanManager banManager, LanguageManager languageManager, ConfigManager configManager, IpLogManager ipLogManager) {
+    public BanListener(BanManager banManager, LanguageManager languageManager, ConfigManager configManager,
+            IpLogManager ipLogManager) {
         this.banManager = banManager;
         this.languageManager = languageManager;
         this.configManager = configManager;
@@ -36,7 +35,7 @@ public class BanListener {
     @Subscribe
     public void onLogin(LoginEvent event) {
         Player player = event.getPlayer();
-        
+
         // Update name cache for offline resolution
         banManager.updateNameCache(player.getUniqueId(), player.getUsername());
 
@@ -46,11 +45,12 @@ public class BanListener {
 
         if (banManager.isBanned(player.getUniqueId())) {
             BanEvent latestBan = banManager.getLatestBan(player.getUniqueId());
-            if (latestBan == null) return;
-            
+            if (latestBan == null)
+                return;
+
             String expiryStr;
             String timeRemainingStr;
-            
+
             if (latestBan.getExpiry() == -1) {
                 expiryStr = "Permanent";
                 timeRemainingStr = "Permanent";
@@ -59,12 +59,12 @@ public class BanListener {
                 long remaining = latestBan.getExpiry() - System.currentTimeMillis();
                 timeRemainingStr = TimeUtils.formatRemainingTime(remaining);
             }
-            
+
             String msg = languageManager.getMessage("ban.login_denied")
                     .replace("{reason}", latestBan.getReason())
                     .replace("{expiry}", expiryStr)
                     .replace("{left}", timeRemainingStr);
-                    
+
             event.setResult(LoginEvent.ComponentResult.denied(mm.deserialize(msg)));
         }
     }
