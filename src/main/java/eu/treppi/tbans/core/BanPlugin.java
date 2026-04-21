@@ -9,6 +9,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import eu.treppi.tbans.commands.AltsCommand;
 import eu.treppi.tbans.commands.BanCommand;
 import eu.treppi.tbans.commands.BlameCommand;
+import eu.treppi.tbans.commands.BanIpCommand;
 import eu.treppi.tbans.commands.HistoryCommand;
 import eu.treppi.tbans.commands.KickCommand;
 import eu.treppi.tbans.commands.UnbanCommand;
@@ -71,9 +72,12 @@ public class BanPlugin {
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("alts").build(),
                                 new AltsCommand(server, banManager, languageManager, configManager, ipLogManager));
+                server.getCommandManager().register(
+                                server.getCommandManager().metaBuilder("banip").build(),
+                                new BanIpCommand(server, banManager, languageManager, configManager, ipLogManager));
                 server.getEventManager().register(this,
                                 new BanListener(banManager, languageManager, configManager, ipLogManager));
-                
+
                 apiManager.start();
                 logger.info("TBans has been enabled!");
                 logger.info("API server started on port {}", configManager.getApiPort());

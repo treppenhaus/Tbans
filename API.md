@@ -81,7 +81,18 @@ Creates a new ban record and disconnects the player if online.
 }
 ```
 
-### 4. Kick a Player
+### 4. Ban an IP
+Creates a new IP ban record and disconnects all online players sharing the same IP hash.
+
+- **URL:** `/api/banip`
+- **Method:** `POST`
+- **Body Parameters:**
+  - `target` (String, Required): Name, UUID, or a raw IP address to ban.
+  - `author` (String, Required): Name or UUID of the person/system executing the ban.
+  - `duration` (String, Optional): Time string (e.g., `7d`).
+  - `reason` (String, Optional): Reason for the ban.
+
+### 5. Kick a Player
 Disconnects an online player from the proxy and logs the action.
 
 - **URL:** `/api/kick`
@@ -91,7 +102,7 @@ Disconnects an online player from the proxy and logs the action.
   - `author` (String, Required): Name or UUID of the person/system executing the kick.
   - `reason` (String, Optional): Reason for the kick.
 
-### 5. Unban a Player
+### 6. Unban a Player
 Removes a player's active ban.
 
 - **URL:** `/api/unban`

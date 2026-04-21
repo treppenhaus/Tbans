@@ -21,9 +21,11 @@ import java.util.stream.Collectors;
 
 public class BanManager {
     private Map<UUID, List<BanEvent>> playerEvents = new HashMap<>();
+    private Map<String, List<BanEvent>> ipEvents = new HashMap<>();
     private Map<String, UUID> nameToUuid = new HashMap<>();
     private Map<UUID, String> uuidToName = new HashMap<>();
     private final File storageFile;
+    private final File ipStorageFile;
     private final File namesFile;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -33,8 +35,10 @@ public class BanManager {
             dataDirectory.toFile().mkdirs();
         }
         this.storageFile = dataDirectory.resolve("uuid-bans.json").toFile();
+        this.ipStorageFile = dataDirectory.resolve("ip-bans.json").toFile();
         this.namesFile = dataDirectory.resolve("names.json").toFile();
         loadBans();
+        loadIpBans();
         loadNames();
     }
 
@@ -59,11 +63,54 @@ public class BanManager {
         saveBans();
     }
 
+    public void banIp(String ipHash, UUID executor, long durationMillis, String reason) {
+        long timestamp = System.currentTimeMillis();
+        long expiry = (durationMillis == -1) ? -1 : (timestamp + durationMillis);
+        addIpEvent(ipHash, new BanEvent(BanEvent.Type.BAN, null, executor, timestamp, expiry, reason));
+    }
+
+    public void unbanIp(String ipHash, UUID executor, String reason) {
+        long timestamp = System.currentTimeMillis();
+        addIpEvent(ipHash, new BanEvent(BanEvent.Type.UNBAN, null, executor, timestamp, -1, reason));
+    }
+
+    private void addIpEvent(String ipHash, BanEvent event) {
+        ipEvents.computeIfAbsent(ipHash, k -> new ArrayList<>()).add(event);
+        saveIpBans();
+    }
+
+    public boolean isIpBanned(String ipHash) {
+        BanEvent latest = getLatestIpBan(ipHash);
+        if (latest == null)
+            return false;
+
+        if (latest.getExpiry() == -1)
+            return true;
+        return latest.getExpiry() > System.currentTimeMillis();
+    }
+
+    public BanEvent getLatestIpBan(String ipHash) {
+        if (!ipEvents.containsKey(ipHash))
+            return null;
+
+        List<BanEvent> events = ipEvents.get(ipHash);
+        for (int i = events.size() - 1; i >= 0; i--) {
+            BanEvent event = events.get(i);
+            if (event.getType() == BanEvent.Type.BAN)
+                return event;
+            if (event.getType() == BanEvent.Type.UNBAN)
+                return null;
+        }
+        return null;
+    }
+
     public boolean isBanned(UUID uuid) {
         BanEvent latest = getLatestBan(uuid);
-        if (latest == null) return false;
-        
-        if (latest.getExpiry() == -1) return true;
+        if (latest == null)
+            return false;
+
+        if (latest.getExpiry() == -1)
+            return true;
         return latest.getExpiry() > System.currentTimeMillis();
     }
 
@@ -96,7 +143,8 @@ public class BanManager {
     }
 
     public List<BanEvent> getEvents(UUID uuid) {
-        if (uuid == null) return new ArrayList<>();
+        if (uuid == null)
+            return new ArrayList<>();
         return playerEvents.getOrDefault(uuid, new ArrayList<>());
     }
 
@@ -120,8 +168,10 @@ public class BanManager {
     }
 
     public String getNameFromUuid(UUID uuid) {
-        if (uuid == null) return "Unknown";
-        if (uuid.equals(new UUID(0, 0))) return "Console";
+        if (uuid == null)
+            return "Unknown";
+        if (uuid.equals(new UUID(0, 0)))
+            return "Console";
         return uuidToName.getOrDefault(uuid, uuid.toString());
     }
 
@@ -137,30 +187,30 @@ public class BanManager {
                         .header("User-Agent", "Tbans Velocity Plugin")
                         .GET()
                         .build(),
-                HttpResponse.BodyHandlers.ofString()
-        ).thenApply(response -> {
-            if (response.statusCode() != 200) return null;
-            try {
-                JsonObject json = GSON.fromJson(response.body(), JsonObject.class);
-                if (json.get("success").getAsBoolean()) {
-                    String uuidStr = json.getAsJsonObject("data")
-                            .getAsJsonObject("player")
-                            .get("raw_id").getAsString();
-                    
-                    if (uuidStr.length() == 32) {
-                        uuidStr = uuidStr.replaceFirst(
-                                "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{12})",
-                                "$1-$2-$3-$4-$5"
-                        );
+                HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+                    if (response.statusCode() != 200)
+                        return null;
+                    try {
+                        JsonObject json = GSON.fromJson(response.body(), JsonObject.class);
+                        if (json.get("success").getAsBoolean()) {
+                            String uuidStr = json.getAsJsonObject("data")
+                                    .getAsJsonObject("player")
+                                    .get("raw_id").getAsString();
+
+                            if (uuidStr.length() == 32) {
+                                uuidStr = uuidStr.replaceFirst(
+                                        "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{12})",
+                                        "$1-$2-$3-$4-$5");
+                            }
+
+                            UUID uuid = UUID.fromString(uuidStr);
+                            updateNameCache(uuid, name);
+                            return uuid;
+                        }
+                    } catch (Exception ignored) {
                     }
-                    
-                    UUID uuid = UUID.fromString(uuidStr);
-                    updateNameCache(uuid, name);
-                    return uuid;
-                }
-            } catch (Exception ignored) {}
-            return null;
-        });
+                    return null;
+                });
     }
 
     public List<String> getBannedNames() {
@@ -221,4 +271,24 @@ public class BanManager {
         }
     }
 
+    private void loadIpBans() {
+        if (!ipStorageFile.exists())
+            return;
+        try (Reader reader = new FileReader(ipStorageFile)) {
+            ipEvents = GSON.fromJson(reader, new TypeToken<Map<String, List<BanEvent>>>() {
+            }.getType());
+            if (ipEvents == null)
+                ipEvents = new HashMap<>();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveIpBans() {
+        try (Writer writer = new FileWriter(ipStorageFile)) {
+            GSON.toJson(ipEvents, writer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

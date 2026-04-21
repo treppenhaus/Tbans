@@ -60,7 +60,17 @@ public class IpLogManager {
         }
     }
 
-    private String hashIp(String ip, long salt) {
+    public List<String> getIpHashes(UUID playerUuid) {
+        List<String> hashes = new ArrayList<>();
+        for (IpEntry entry : ipLogs) {
+            if (entry.hasPlayer(playerUuid)) {
+                hashes.add(entry.getIpHash());
+            }
+        }
+        return hashes;
+    }
+
+    public String hashIp(String ip, long salt) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             String input = ip + salt;
@@ -147,7 +157,6 @@ public class IpLogManager {
         @SerializedName("iphashvalue")
         private String ipHash;
 
-                
         private List<PlayerInfo> players = new ArrayList<>();
 
         public IpEntry(String ipHash) {

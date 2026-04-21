@@ -16,6 +16,7 @@ A lightweight, simple, and customizable ban plugin for Velocity proxies, featuri
 | Command | Permission | Description |
 | ------- | ---------- | ----------- |
 | `/ban <player> <time> <reason>` | `tbans.ban` | Bans a player from the network for a specified time. |
+| `/banip <player/ip> <time> <reason>` | `tbans.banip` | Bans an IP address. Can target a player's known IPs or a raw IP. |
 | `/unban <player> [reason]` | `tbans.unban` | Unbans a previously banned player. |
 | `/kick <player> [reason]` | `tbans.kick` | Kicks an online player from the proxy network. |
 | `/alts <player>` | `tbans.command.alts` | Search for linked accounts (alts) based on shared connection fingerprints. |

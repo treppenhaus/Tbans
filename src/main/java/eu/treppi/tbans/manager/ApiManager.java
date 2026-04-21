@@ -46,6 +46,7 @@ public class ApiManager {
             serverSide.createContext("/api/kick", new KickHandler());
             serverSide.createContext("/api/unban", new UnbanHandler());
             serverSide.createContext("/api/history/", new HistoryHandler());
+            serverSide.createContext("/api/banip", new BanIpHandler());
 
             serverSide.setExecutor(Executors.newCachedThreadPool());
             serverSide.start();
@@ -289,6 +290,100 @@ public class ApiManager {
                     e.printStackTrace();
                 }
             });
+        }
+    }
+
+    private class BanIpHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!isAuthorized(exchange)) {
+                sendResponse(exchange, 401, Map.of("error", "Unauthorized"));
+                return;
+            }
+            if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                sendResponse(exchange, 405, Map.of("error", "Method Not Allowed"));
+                return;
+            }
+
+            Map<String, Object> body = parseBody(exchange);
+            if (body == null || !body.containsKey("target") || !body.containsKey("author")) {
+                sendResponse(exchange, 400, Map.of("error", "Missing 'target' or 'author' field"));
+                return;
+            }
+
+            String target = (String) body.get("target");
+            String author = (String) body.get("author");
+            String durationStr = (String) body.getOrDefault("duration", "");
+            String reason = (String) body.getOrDefault("reason", "No reason provided.");
+
+            long duration = durationStr.isEmpty() ? -1 : TimeUtils.parseTime(durationStr);
+            String timeStr = duration == -1 ? "Permanent" : durationStr;
+
+            banManager.resolveUuid(author).thenAccept(authorUuid -> {
+                UUID actualAuthor = authorUuid != null ? authorUuid : CONSOLE_UUID;
+
+                if (target.matches("^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}$")) {
+                    String hash = ipLogManager.hashIp(target, configManager.getSalt());
+                    banManager.banIp(hash, actualAuthor, duration, reason);
+                    kickByIpHash(hash, timeStr, reason);
+                    broadcast("ban", target + " (IP)", author, timeStr, reason);
+                    try {
+                        sendResponse(exchange, 200, Map.of("success", true, "message", "IP banned successfully"));
+                    } catch (IOException ignored) {
+                    }
+                } else {
+                    banManager.resolveUuid(target).thenAccept(uuid -> {
+                        if (uuid == null) {
+                            try {
+                                sendResponse(exchange, 404, Map.of("error", "Player not found"));
+                            } catch (IOException ignored) {
+                            }
+                            return;
+                        }
+
+                        List<String> hashes = ipLogManager.getIpHashes(uuid);
+                        if (hashes.isEmpty()) {
+                            Optional<Player> p = server.getPlayer(uuid);
+                            if (p.isPresent()) {
+                                String ip = p.get().getRemoteAddress().getAddress().getHostAddress();
+                                hashes = List.of(ipLogManager.hashIp(ip, configManager.getSalt()));
+                            }
+                        }
+
+                        if (hashes.isEmpty()) {
+                            try {
+                                sendResponse(exchange, 400, Map.of("error", "No IP history found for player"));
+                            } catch (IOException ignored) {
+                            }
+                            return;
+                        }
+
+                        for (String hash : hashes) {
+                            banManager.banIp(hash, actualAuthor, duration, reason);
+                            kickByIpHash(hash, timeStr, reason);
+                        }
+                        broadcast("ban", target + " (IP)", author, timeStr, reason);
+                        try {
+                            sendResponse(exchange, 200,
+                                    Map.of("success", true, "message", "Player IP(s) banned successfully"));
+                        } catch (IOException ignored) {
+                        }
+                    });
+                }
+            });
+        }
+
+        private void kickByIpHash(String hash, String timeStr, String reason) {
+            for (Player p : server.getAllPlayers()) {
+                String pIp = p.getRemoteAddress().getAddress().getHostAddress();
+                String pHash = ipLogManager.hashIp(pIp, configManager.getSalt());
+                if (pHash.equals(hash)) {
+                    String disconnectMsg = languageManager.getMessage("ban.disconnect_screen")
+                            .replace("{duration}", timeStr)
+                            .replace("{reason}", reason + " (IP Ban)");
+                    p.disconnect(mm.deserialize(disconnectMsg));
+                }
+            }
         }
     }
 
