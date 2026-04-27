@@ -1,5 +1,0 @@
-﻿L48677: INSERT INTO `libertybans_punishments` VALUES
-L48678: (1,0,'��oA-L񌤟q���','No reason stated.','',1772389923,0,NULL,NULL),
-L48679: (1001,3,'��+��[A[�@{|��','No reason stated.','',1772412373,0,NULL,NULL),
-L48680: (2001,1,'%�*��Em��M�!�B�','No reason stated.','',1772562891,0,NULL,NULL),
-L48681: (2002,0,'%�*��Em��M�!�B�','No reason stated.','',1772562917,0,NULL,NULL),

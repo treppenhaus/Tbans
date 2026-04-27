@@ -1,10 +1,0 @@
-﻿L30454: INSERT INTO `libertybans_names` VALUES
-L30455: ('\0\0\0\0\0\0\0\0\0	\0\0*}G','.Glubb2205','.glubb2205',1774127046),
-L30456: ('\0\0\0\0\0\0\0\0\0	\0\0Z�,','.TheHorror5756','.thehorror5756',1774100568),
-L30457: ('\0\0\0\0\0\0\0\0\0	\0\0\\�','.Boruto_ay','.boruto_ay',1774818849),
-L30458: ('\0\0\0\0\0\0\0\0\0	\0\0;�','.mYsTIC5104','.mystic5104',1773567589),
-L48106: INSERT INTO `libertybans_names` VALUES
-L48107: ('�Es~��C2�3o���z','JackJaBlondski','jackjablondski',1773863402),
-L48108: ('�O���I�e=ԅ�D','Blauertisch511','blauertisch511',1774739781),
-L48109: ('�P`]8DK�~7�����','FabianGHG2010','fabianghg2010',1774173783),
-L48110: ('�T^r\ZC�!�0�?','Pietomann','pietomann',1774695205),
