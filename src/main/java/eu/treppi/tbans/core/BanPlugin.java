@@ -74,7 +74,7 @@ public class BanPlugin {
         public void onProxyInitialization(ProxyInitializeEvent event) {
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("ban").build(),
-                                new BanCommand(server, banManager, languageManager, configManager));
+                                new BanCommand(server, banManager, languageManager, configManager, ipLogManager));
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("unban").build(),
                                 new UnbanCommand(server, banManager, languageManager, configManager));
