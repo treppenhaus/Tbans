@@ -33,6 +33,11 @@ jobs:
         
         # Construct the final display name with run number
         echo "display_version=$VERSION-${{ github.run_number }}" >> $GITHUB_OUTPUT
+        
+        # Capture latest commit message
+        echo "commit_message<<EOF" >> $GITHUB_OUTPUT
+        git log -1 --pretty=%B >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Build with Maven
       run: mvn -B clean package -Dbuild.number=${{ github.run_number }} --file pom.xml
@@ -64,6 +69,9 @@ jobs:
           **Version:** `${{ steps.meta.outputs.version }}`
           **Build Number:** `${{ github.run_number }}`
           **Artifact:** `${{ env.jar_name }}`
+          
+          fixes included with this release:
+          - ${{ steps.meta.outputs.commit_message }}
         draft: false
         prerelease: false
         files: |
