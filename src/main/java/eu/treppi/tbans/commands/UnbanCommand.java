@@ -76,11 +76,12 @@ public class UnbanCommand implements SimpleCommand {
         String unbannerName = source instanceof Player ? ((Player) source).getUsername() : "Console";
         BanEvent event = banManager.unbanPlayer(targetUuid, executorUuid, reason);
 
-        String successMsg = MessageUtils.format(languageManager.getMessage("unban.success"), targetName, null, "",
+        String resolvedTargetName = banManager.getNameFromUuid(targetUuid);
+        String successMsg = MessageUtils.format(languageManager.getMessage("unban.success"), resolvedTargetName, null, "",
                 reason, event.getCode(), configManager);
         source.sendMessage(mm.deserialize(successMsg));
 
-        String broadcastMsg = MessageUtils.format(languageManager.getMessage("unban.broadcast"), targetName,
+        String broadcastMsg = MessageUtils.format(languageManager.getMessage("unban.broadcast"), resolvedTargetName,
                 unbannerName, "", reason, event.getCode(), configManager);
         for (Player p : server.getAllPlayers()) {
             if (p.hasPermission("tbans.notify")) {

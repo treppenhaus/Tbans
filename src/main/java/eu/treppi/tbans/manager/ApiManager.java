@@ -170,7 +170,9 @@ public class ApiManager {
                         }
 
                         banManager.banPlayer(uuid, actualAuthor, duration, reason);
-                        broadcast("ban", target, author, timeStr, reason);
+                        String targetName = banManager.getNameFromUuid(uuid);
+                        String authorName = actualAuthor.equals(CONSOLE_UUID) ? author : banManager.getNameFromUuid(actualAuthor);
+                        broadcast("ban", targetName, authorName, timeStr, reason);
 
                         try {
                             sendResponse(exchange, 200,
@@ -229,7 +231,9 @@ public class ApiManager {
                         targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
 
                         banManager.kickPlayer(uuid, actualAuthor, reason);
-                        broadcast("kick", target, author, "", reason);
+                        String targetName = banManager.getNameFromUuid(uuid);
+                        String authorName = actualAuthor.equals(CONSOLE_UUID) ? author : banManager.getNameFromUuid(actualAuthor);
+                        broadcast("kick", targetName, authorName, "", reason);
 
                         try {
                             sendResponse(exchange, 200,
@@ -277,7 +281,9 @@ public class ApiManager {
                     banManager.resolveUuid(author).thenAccept(authorUuid -> {
                         UUID actualAuthor = authorUuid != null ? authorUuid : CONSOLE_UUID;
                         banManager.unbanPlayer(uuid, actualAuthor, reason);
-                        broadcast("unban", target, author, "", reason);
+                        String targetName = banManager.getNameFromUuid(uuid);
+                        String authorName = actualAuthor.equals(CONSOLE_UUID) ? author : banManager.getNameFromUuid(actualAuthor);
+                        broadcast("unban", targetName, authorName, "", reason);
 
                         try {
                             sendResponse(exchange, 200,
@@ -326,7 +332,8 @@ public class ApiManager {
                     String hash = ipLogManager.hashIp(target, configManager.getSalt());
                     banManager.banIp(hash, actualAuthor, duration, reason);
                     kickByIpHash(hash, timeStr, reason);
-                    broadcast("ban", target + " (IP)", author, timeStr, reason);
+                    String authorName = actualAuthor.equals(CONSOLE_UUID) ? author : banManager.getNameFromUuid(actualAuthor);
+                    broadcast("ban", target + " (IP)", authorName, timeStr, reason);
                     try {
                         sendResponse(exchange, 200, Map.of("success", true, "message", "IP banned successfully"));
                     } catch (IOException ignored) {
@@ -362,7 +369,9 @@ public class ApiManager {
                             banManager.banIp(hash, actualAuthor, duration, reason);
                             kickByIpHash(hash, timeStr, reason);
                         }
-                        broadcast("ban", target + " (IP)", author, timeStr, reason);
+                        String targetName = banManager.getNameFromUuid(uuid);
+                        String authorName = actualAuthor.equals(CONSOLE_UUID) ? author : banManager.getNameFromUuid(actualAuthor);
+                        broadcast("ban", targetName + " (IP)", authorName, timeStr, reason);
                         try {
                             sendResponse(exchange, 200,
                                     Map.of("success", true, "message", "Player IP(s) banned successfully"));

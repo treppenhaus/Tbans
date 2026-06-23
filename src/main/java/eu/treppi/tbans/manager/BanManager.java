@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -260,6 +261,36 @@ public class BanManager {
     }
 
     public CompletableFuture<UUID> resolveUuid(String name) {
+        try {
+            UUID directUuid = UUID.fromString(name);
+            if (uuidToName.containsKey(directUuid)) {
+                return CompletableFuture.completedFuture(directUuid);
+            }
+            return HTTP_CLIENT.sendAsync(
+                    HttpRequest.newBuilder()
+                            .uri(URI.create("https://playerdb.co/api/player/minecraft/" + name))
+                            .timeout(Duration.ofMillis(1500))
+                            .header("User-Agent", "Tbans Velocity Plugin")
+                            .GET()
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+                        if (response.statusCode() == 200) {
+                            try {
+                                JsonObject json = GSON.fromJson(response.body(), JsonObject.class);
+                                if (json.get("success").getAsBoolean()) {
+                                    String resolvedName = json.getAsJsonObject("data")
+                                            .getAsJsonObject("player")
+                                            .get("username").getAsString();
+                                    updateNameCache(directUuid, resolvedName);
+                                }
+                            } catch (Exception ignored) {
+                            }
+                        }
+                        return directUuid;
+                    }).exceptionally(ex -> directUuid);
+        } catch (IllegalArgumentException ignored) {
+        }
+
         UUID cached = getUuidFromName(name);
         if (cached != null) {
             return CompletableFuture.completedFuture(cached);
@@ -268,6 +299,7 @@ public class BanManager {
         return HTTP_CLIENT.sendAsync(
                 HttpRequest.newBuilder()
                         .uri(URI.create("https://playerdb.co/api/player/minecraft/" + name))
+                        .timeout(Duration.ofMillis(1500))
                         .header("User-Agent", "Tbans Velocity Plugin")
                         .GET()
                         .build(),
@@ -288,13 +320,16 @@ public class BanManager {
                             }
 
                             UUID uuid = UUID.fromString(uuidStr);
-                            updateNameCache(uuid, name);
+                            String resolvedName = json.getAsJsonObject("data")
+                                    .getAsJsonObject("player")
+                                    .get("username").getAsString();
+                            updateNameCache(uuid, resolvedName);
                             return uuid;
                         }
                     } catch (Exception ignored) {
                     }
                     return null;
-                });
+                }).exceptionally(ex -> null);
     }
 
     public List<String> getBannedNames() {
