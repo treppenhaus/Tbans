@@ -87,6 +87,21 @@ public class ConfigManager {
             changed = true;
         }
 
+        if (!configData.containsKey("storage-type")) {
+            configData.put("storage-type", "json");
+            changed = true;
+        }
+
+        if (!configData.containsKey("mongodb-uri")) {
+            configData.put("mongodb-uri", "mongodb://localhost:27017");
+            changed = true;
+        }
+
+        if (!configData.containsKey("mongodb-database")) {
+            configData.put("mongodb-database", "tbans");
+            changed = true;
+        }
+
         if (changed) {
             saveConfig();
         }
@@ -129,5 +144,21 @@ public class ConfigManager {
     public String getHeadFormat() {
         Object head = configData.get("head-format");
         return head != null ? head.toString() : "";
+    }
+
+    /** "json" or "mongodb" */
+    public String getStorageType() {
+        Object type = configData.get("storage-type");
+        return type != null ? type.toString().trim().toLowerCase() : "json";
+    }
+
+    public String getMongoUri() {
+        Object uri = configData.get("mongodb-uri");
+        return uri != null ? uri.toString() : "mongodb://localhost:27017";
+    }
+
+    public String getMongoDatabase() {
+        Object db = configData.get("mongodb-database");
+        return db != null ? db.toString() : "tbans";
     }
 }

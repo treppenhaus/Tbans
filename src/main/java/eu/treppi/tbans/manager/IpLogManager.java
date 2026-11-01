@@ -1,48 +1,24 @@
 package eu.treppi.tbans.manager;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
-import com.google.gson.reflect.TypeToken;
+import eu.treppi.tbans.storage.Storage;
 
-import java.io.*;
-import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public class IpLogManager {
-    private final File logFile;
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private Storage storage;
     private List<IpEntry> ipLogs = new ArrayList<>();
 
-    public IpLogManager(Path dataDirectory) {
-        if (!dataDirectory.toFile().exists()) {
-            dataDirectory.toFile().mkdirs();
-        }
-        this.logFile = dataDirectory.resolve("IPs.json").toFile();
-        loadLogs();
+    public IpLogManager(Storage storage) {
+        setStorage(storage);
     }
 
-    private void loadLogs() {
-        if (!logFile.exists())
-            return;
-        try (Reader reader = new FileReader(logFile)) {
-            ipLogs = GSON.fromJson(reader, new TypeToken<List<IpEntry>>() {
-            }.getType());
-            if (ipLogs == null)
-                ipLogs = new ArrayList<>();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void saveLogs() {
-        try (Writer writer = new FileWriter(logFile)) {
-            GSON.toJson(ipLogs, writer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    /** Switches the storage backend and reloads all IP logs from it. */
+    public synchronized void setStorage(Storage storage) {
+        this.storage = storage;
+        this.ipLogs = storage.loadIpLogs();
     }
 
     public void logIp(UUID playerUuid, String ip, long salt) {
@@ -56,7 +32,7 @@ public class IpLogManager {
 
         if (!entry.hasPlayer(playerUuid)) {
             entry.addPlayer(playerUuid);
-            saveLogs();
+            storage.saveIpEntry(entry, ipLogs);
         }
     }
 

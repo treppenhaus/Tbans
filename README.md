@@ -21,6 +21,7 @@ A lightweight, simple, and customizable ban plugin for Velocity proxies, featuri
 | `/kick <player> [reason]` | `tbans.kick` | Kicks an online player from the proxy network. |
 | `/alts <player>` | `tbans.command.alts` | Search for linked accounts (alts). |
 | `/tbans` | None | View plugin version and build information. |
+| `/tbans reload` / `/tbans migrate [from] [to]` | `tbans.admin` | Reload config, or copy data between JSON and MongoDB storage. |
 | `/history <player>` (or `/checkban`) | `tbans.history` | Check a player's ban status and view their punishment history. |
 | `/blame <staff>` | `tbans.blame` | See the latest actions (bans, unbans) executed by a particular staff member. |
 
@@ -37,6 +38,25 @@ TBans includes a privacy-preserving alt-account detection system that identifies
 In `config.yml`, you can customize:
 - `salt`: The security salt for IP hashing. Changing this will invalidate all existing links (useful for a "reset").
 - `alt-link-days`: The maximum time gap between connections on the same IP to be considered a direct link.
+
+## Storage (JSON / MongoDB)
+
+By default TBans stores everything in JSON files in the plugin folder. You can switch to MongoDB in `config.yml`:
+
+```yaml
+storage-type: mongodb        # json | mongodb
+mongodb-uri: mongodb://user:password@localhost:27017
+mongodb-database: tbans
+```
+
+If MongoDB can't be reached on startup or reload, TBans logs an error and falls back to the JSON files, so bans are still enforced.
+
+### Migrating from JSON to MongoDB
+1. Set `mongodb-uri` and `mongodb-database` in `config.yml` (keep `storage-type: json` for now) and run `/tbans reload`.
+2. Run `/tbans migrate` (same as `/tbans migrate json mongodb`). This copies all bans, IP bans, names and IP logs to MongoDB. Running it again is safe: entries are overwritten, not duplicated.
+3. Set `storage-type: mongodb` and run `/tbans reload`.
+
+`/tbans migrate mongodb json` works the other way round, e.g. for a backup. Both require `tbans.admin`.
 
 ## JSON API
 

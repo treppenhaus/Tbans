@@ -20,6 +20,9 @@ import eu.treppi.tbans.manager.IpLogManager;
 import eu.treppi.tbans.manager.LanguageManager;
 import eu.treppi.tbans.manager.ApiManager;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
+import eu.treppi.tbans.storage.Storage;
+import eu.treppi.tbans.storage.StorageData;
+import eu.treppi.tbans.storage.StorageFactory;
 import org.slf4j.Logger;
 import org.bstats.velocity.Metrics;
 
@@ -41,6 +44,8 @@ public class BanPlugin {
         private final IpLogManager ipLogManager;
         private final ApiManager apiManager;
         private final Metrics.Factory metricsFactory;
+        private final Path dataDirectory;
+        private Storage storage;
         private String version = "unknown";
         private String buildNumber = "0";
 
@@ -50,10 +55,12 @@ public class BanPlugin {
                 this.server = server;
                 this.logger = logger;
                 this.metricsFactory = metricsFactory;
-                this.banManager = new BanManager(dataDirectory);
-                this.languageManager = new LanguageManager(dataDirectory, "en_EN");
+                this.dataDirectory = dataDirectory;
                 this.configManager = new ConfigManager(dataDirectory);
-                this.ipLogManager = new IpLogManager(dataDirectory);
+                this.languageManager = new LanguageManager(dataDirectory, "en_EN");
+                this.storage = StorageFactory.createConfigured(configManager, dataDirectory, logger);
+                this.banManager = new BanManager(storage);
+                this.ipLogManager = new IpLogManager(storage);
                 this.apiManager = new ApiManager(server, banManager, languageManager, configManager, ipLogManager);
                 loadVersionInfo();
         }
@@ -99,7 +106,7 @@ public class BanPlugin {
                                 new BanIpCommand(server, banManager, languageManager, configManager, ipLogManager));
                 server.getCommandManager().register(
                                 server.getCommandManager().metaBuilder("tbans").build(),
-                                new TbansCommand(version, buildNumber, languageManager, this::reload));
+                                new TbansCommand(version, buildNumber, languageManager, this::reload, this::migrate));
                 server.getEventManager().register(this,
                                 new BanListener(banManager, languageManager, configManager, ipLogManager));
 
@@ -115,13 +122,63 @@ public class BanPlugin {
         public void reload() {
                 configManager.reload();
                 languageManager.reload();
+                reloadStorage();
                 apiManager.stop();
                 apiManager.start();
+        }
+
+        /** Reconnects the configured storage backend and reloads all cached data from it. */
+        private synchronized void reloadStorage() {
+                Storage newStorage = StorageFactory.createConfigured(configManager, dataDirectory, logger);
+                Storage old = this.storage;
+                this.storage = newStorage;
+                banManager.setStorage(newStorage);
+                ipLogManager.setStorage(newStorage);
+                if (old != newStorage) {
+                        old.close();
+                }
+        }
+
+        /**
+         * Copies all data from one backend to another (e.g. json -> mongodb). Existing entries in the
+         * target with the same key are overwritten, everything else is kept. Blocking.
+         *
+         * @return a summary of what was migrated
+         */
+        public synchronized String migrate(String from, String to) {
+                if (from.equals(to)) {
+                        throw new IllegalArgumentException("Source and target storage are the same.");
+                }
+                Storage current = this.storage;
+                Storage source = from.equals(current.getName()) ? current
+                                : StorageFactory.create(from, configManager, dataDirectory);
+                Storage target = null;
+                try {
+                        target = to.equals(current.getName()) ? current
+                                        : StorageFactory.create(to, configManager, dataDirectory);
+                        StorageData data = source.loadAll();
+                        target.importAll(data);
+                        if (target == current) {
+                                // Refresh caches so the imported data is active immediately
+                                banManager.setStorage(current);
+                                ipLogManager.setStorage(current);
+                        }
+                        logger.info("Migrated {} -> {}: {}", from, to, data.summary());
+                        return data.summary();
+                } finally {
+                        if (source != current) {
+                                source.close();
+                        }
+                        if (target != null && target != current) {
+                                target.close();
+                        }
+                }
         }
 
         @Subscribe
         public void onProxyShutdown(ProxyShutdownEvent event) {
                 apiManager.stop();
+                storage.close();
                 logger.info("TBans has been disabled!");
         }
 }

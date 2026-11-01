@@ -3,14 +3,12 @@ package eu.treppi.tbans.manager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
+import eu.treppi.tbans.storage.Storage;
 
-import java.io.*;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,21 +26,17 @@ public class BanManager {
     private Map<UUID, String> uuidToName = new HashMap<>();
     // Correctly-cased names (names.json only stores lowercased names)
     private Map<UUID, String> displayNames = new ConcurrentHashMap<>();
-    private final File storageFile;
-    private final File ipStorageFile;
-    private final File namesFile;
-    private final File displayNamesFile;
+    private Storage storage;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
-    public BanManager(Path dataDirectory) {
-        if (!dataDirectory.toFile().exists()) {
-            dataDirectory.toFile().mkdirs();
-        }
-        this.storageFile = dataDirectory.resolve("uuid-bans.json").toFile();
-        this.ipStorageFile = dataDirectory.resolve("ip-bans.json").toFile();
-        this.namesFile = dataDirectory.resolve("names.json").toFile();
-        this.displayNamesFile = dataDirectory.resolve("uuid-names.json").toFile();
+    public BanManager(Storage storage) {
+        setStorage(storage);
+    }
+
+    /** Switches the storage backend and reloads all data from it. */
+    public synchronized void setStorage(Storage storage) {
+        this.storage = storage;
         loadBans();
         loadIpBans();
         loadNames();
@@ -72,8 +66,9 @@ public class BanManager {
     }
 
     private void addEvent(UUID target, BanEvent event) {
-        playerEvents.computeIfAbsent(target, k -> new ArrayList<>()).add(event);
-        saveBans();
+        List<BanEvent> events = playerEvents.computeIfAbsent(target, k -> new ArrayList<>());
+        events.add(event);
+        storage.savePlayerEvents(target, events, playerEvents);
     }
 
     public BanEvent banIp(String ipHash, UUID executor, long durationMillis, String reason) {
@@ -93,8 +88,9 @@ public class BanManager {
     }
 
     private void addIpEvent(String ipHash, BanEvent event) {
-        ipEvents.computeIfAbsent(ipHash, k -> new ArrayList<>()).add(event);
-        saveIpBans();
+        List<BanEvent> events = ipEvents.computeIfAbsent(ipHash, k -> new ArrayList<>());
+        events.add(event);
+        storage.saveIpEvents(ipHash, events, ipEvents);
     }
 
     public boolean isIpBanned(String ipHash) {
@@ -249,7 +245,7 @@ public class BanManager {
         nameToUuid.put(name.toLowerCase(), uuid);
         uuidToName.put(uuid, name);
         displayNames.put(uuid, name);
-        saveNames();
+        storage.saveName(uuid, name, nameToUuid, displayNames);
     }
 
     public UUID getUuidFromName(String name) {
@@ -403,20 +399,8 @@ public class BanManager {
     }
 
     private void loadBans() {
-        if (!storageFile.exists())
-            return;
-        try (Reader reader = new FileReader(storageFile)) {
-            playerEvents = GSON.fromJson(reader, new TypeToken<Map<UUID, List<BanEvent>>>() {
-            }.getType());
-            if (playerEvents == null) {
-                playerEvents = new HashMap<>();
-            } else {
-                migrateCodes(playerEvents);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            playerEvents = new HashMap<>();
-        }
+        playerEvents = storage.loadPlayerEvents();
+        migrateCodes(playerEvents);
     }
 
     private <T> void migrateCodes(Map<T, List<BanEvent>> eventsMap) {
@@ -429,79 +413,17 @@ public class BanManager {
         }
     }
 
-    private void saveBans() {
-        try (Writer writer = new FileWriter(storageFile)) {
-            GSON.toJson(playerEvents, writer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void loadNames() {
-        if (!namesFile.exists())
-            return;
-        try (Reader reader = new FileReader(namesFile)) {
-            nameToUuid = GSON.fromJson(reader, new TypeToken<Map<String, UUID>>() {
-            }.getType());
-            if (nameToUuid != null) {
-                for (Map.Entry<String, UUID> entry : nameToUuid.entrySet()) {
-                    uuidToName.put(entry.getValue(), entry.getKey());
-                }
-            } else {
-                nameToUuid = new HashMap<>();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        nameToUuid = storage.loadNameIndex();
+        uuidToName = new HashMap<>();
+        for (Map.Entry<String, UUID> entry : nameToUuid.entrySet()) {
+            uuidToName.put(entry.getValue(), entry.getKey());
         }
-
-        if (displayNamesFile.exists()) {
-            try (Reader reader = new FileReader(displayNamesFile)) {
-                Map<UUID, String> loaded = GSON.fromJson(reader, new TypeToken<Map<UUID, String>>() {
-                }.getType());
-                if (loaded != null) {
-                    displayNames = new ConcurrentHashMap<>(loaded);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private synchronized void saveNames() {
-        try (Writer writer = new FileWriter(namesFile)) {
-            GSON.toJson(nameToUuid, writer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        try (Writer writer = new FileWriter(displayNamesFile)) {
-            GSON.toJson(displayNames, writer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        displayNames = new ConcurrentHashMap<>(storage.loadDisplayNames());
     }
 
     private void loadIpBans() {
-        if (!ipStorageFile.exists())
-            return;
-        try (Reader reader = new FileReader(ipStorageFile)) {
-            ipEvents = GSON.fromJson(reader, new TypeToken<Map<String, List<BanEvent>>>() {
-            }.getType());
-            if (ipEvents == null) {
-                ipEvents = new HashMap<>();
-            } else {
-                migrateCodes(ipEvents);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            ipEvents = new HashMap<>();
-        }
-    }
-
-    private void saveIpBans() {
-        try (Writer writer = new FileWriter(ipStorageFile)) {
-            GSON.toJson(ipEvents, writer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        ipEvents = storage.loadIpEvents();
+        migrateCodes(ipEvents);
     }
 }
