@@ -67,13 +67,14 @@ public class KickCommand implements SimpleCommand {
                     .replace("{reason}", reason);
             targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
 
-            String successMsg = MessageUtils.format(languageManager.getMessage("kick.success"), targetName, null, "",
-                    reason, null, configManager);
+            String kickedName = targetPlayer.get().getUsername();
+            String successMsg = MessageUtils.format(languageManager.getMessage("kick.success"), kickedName,
+                    targetUuid, null, null, "", reason, null, configManager, languageManager);
             source.sendMessage(mm.deserialize(successMsg));
 
             String executor = source instanceof Player ? ((Player) source).getUsername() : "Console";
-            String broadcastMsg = MessageUtils.format(languageManager.getMessage("kick.broadcast"), targetName,
-                    executor, "", reason, null, configManager);
+            String broadcastMsg = MessageUtils.format(languageManager.getMessage("kick.broadcast"), kickedName,
+                    targetUuid, executor, executorUuid, "", reason, null, configManager, languageManager);
             for (Player p : server.getAllPlayers()) {
                 if (p.hasPermission("tbans.notify")) {
                     p.sendMessage(mm.deserialize(broadcastMsg));

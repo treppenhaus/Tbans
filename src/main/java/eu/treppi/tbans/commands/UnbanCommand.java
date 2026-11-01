@@ -76,18 +76,20 @@ public class UnbanCommand implements SimpleCommand {
         String unbannerName = source instanceof Player ? ((Player) source).getUsername() : "Console";
         BanEvent event = banManager.unbanPlayer(targetUuid, executorUuid, reason);
 
-        String resolvedTargetName = banManager.getNameFromUuid(targetUuid);
-        String successMsg = MessageUtils.format(languageManager.getMessage("unban.success"), resolvedTargetName, null, "",
-                reason, event.getCode(), configManager);
-        source.sendMessage(mm.deserialize(successMsg));
+        banManager.resolveName(targetUuid).thenAccept(resolvedTargetName -> {
+            String successMsg = MessageUtils.format(languageManager.getMessage("unban.success"), resolvedTargetName,
+                    targetUuid, null, null, "", reason, event.getCode(), configManager, languageManager);
+            source.sendMessage(mm.deserialize(successMsg));
 
-        String broadcastMsg = MessageUtils.format(languageManager.getMessage("unban.broadcast"), resolvedTargetName,
-                unbannerName, "", reason, event.getCode(), configManager);
-        for (Player p : server.getAllPlayers()) {
-            if (p.hasPermission("tbans.notify")) {
-                p.sendMessage(mm.deserialize(broadcastMsg));
+            String broadcastMsg = MessageUtils.format(languageManager.getMessage("unban.broadcast"),
+                    resolvedTargetName, targetUuid, unbannerName, executorUuid, "", reason, event.getCode(),
+                    configManager, languageManager);
+            for (Player p : server.getAllPlayers()) {
+                if (p.hasPermission("tbans.notify")) {
+                    p.sendMessage(mm.deserialize(broadcastMsg));
+                }
             }
-        }
+        });
     }
 
     @Override

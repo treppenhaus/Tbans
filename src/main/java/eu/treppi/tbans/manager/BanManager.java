@@ -18,6 +18,7 @@ import java.util.Map;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class BanManager {
@@ -25,9 +26,12 @@ public class BanManager {
     private Map<String, List<BanEvent>> ipEvents = new HashMap<>();
     private Map<String, UUID> nameToUuid = new HashMap<>();
     private Map<UUID, String> uuidToName = new HashMap<>();
+    // Correctly-cased names (names.json only stores lowercased names)
+    private Map<UUID, String> displayNames = new ConcurrentHashMap<>();
     private final File storageFile;
     private final File ipStorageFile;
     private final File namesFile;
+    private final File displayNamesFile;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
@@ -38,6 +42,7 @@ public class BanManager {
         this.storageFile = dataDirectory.resolve("uuid-bans.json").toFile();
         this.ipStorageFile = dataDirectory.resolve("ip-bans.json").toFile();
         this.namesFile = dataDirectory.resolve("names.json").toFile();
+        this.displayNamesFile = dataDirectory.resolve("uuid-names.json").toFile();
         loadBans();
         loadIpBans();
         loadNames();
@@ -243,6 +248,7 @@ public class BanManager {
             return;
         nameToUuid.put(name.toLowerCase(), uuid);
         uuidToName.put(uuid, name);
+        displayNames.put(uuid, name);
         saveNames();
     }
 
@@ -257,37 +263,90 @@ public class BanManager {
             return "Unknown";
         if (uuid.equals(new UUID(0, 0)))
             return "Console";
+        String display = displayNames.get(uuid);
+        if (display != null)
+            return display;
         return uuidToName.getOrDefault(uuid, uuid.toString());
+    }
+
+    /**
+     * Resolves the current in-game name of a UUID. Uses the cache first, then
+     * playerdb.co and finally the Mojang session server as a fallback.
+     * Never completes exceptionally; falls back to {@link #getNameFromUuid(UUID)}.
+     */
+    public CompletableFuture<String> resolveName(UUID uuid) {
+        if (uuid == null || uuid.equals(new UUID(0, 0))) {
+            return CompletableFuture.completedFuture(getNameFromUuid(uuid));
+        }
+        String cached = displayNames.get(uuid);
+        if (cached != null) {
+            return CompletableFuture.completedFuture(cached);
+        }
+
+        return fetchNameFromPlayerDb(uuid)
+                .thenCompose(name -> name != null ? CompletableFuture.completedFuture(name)
+                        : fetchNameFromMojang(uuid))
+                .thenApply(name -> {
+                    if (name != null) {
+                        updateNameCache(uuid, name);
+                        return name;
+                    }
+                    return getNameFromUuid(uuid);
+                })
+                .exceptionally(ex -> getNameFromUuid(uuid));
+    }
+
+    private CompletableFuture<String> fetchNameFromPlayerDb(UUID uuid) {
+        return HTTP_CLIENT.sendAsync(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("https://playerdb.co/api/player/minecraft/" + uuid))
+                        .timeout(Duration.ofSeconds(4))
+                        .header("User-Agent", "Tbans Velocity Plugin")
+                        .GET()
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+                    if (response.statusCode() != 200)
+                        return (String) null;
+                    try {
+                        JsonObject json = GSON.fromJson(response.body(), JsonObject.class);
+                        if (json.get("success").getAsBoolean()) {
+                            return json.getAsJsonObject("data")
+                                    .getAsJsonObject("player")
+                                    .get("username").getAsString();
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    return null;
+                }).exceptionally(ex -> null);
+    }
+
+    private CompletableFuture<String> fetchNameFromMojang(UUID uuid) {
+        return HTTP_CLIENT.sendAsync(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("https://sessionserver.mojang.com/session/minecraft/profile/"
+                                + uuid.toString().replace("-", "")))
+                        .timeout(Duration.ofSeconds(4))
+                        .header("User-Agent", "Tbans Velocity Plugin")
+                        .GET()
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
+                    if (response.statusCode() != 200)
+                        return (String) null;
+                    try {
+                        JsonObject json = GSON.fromJson(response.body(), JsonObject.class);
+                        if (json != null && json.has("name")) {
+                            return json.get("name").getAsString();
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    return null;
+                }).exceptionally(ex -> null);
     }
 
     public CompletableFuture<UUID> resolveUuid(String name) {
         try {
-            UUID directUuid = UUID.fromString(name);
-            if (uuidToName.containsKey(directUuid)) {
-                return CompletableFuture.completedFuture(directUuid);
-            }
-            return HTTP_CLIENT.sendAsync(
-                    HttpRequest.newBuilder()
-                            .uri(URI.create("https://playerdb.co/api/player/minecraft/" + name))
-                            .timeout(Duration.ofMillis(1500))
-                            .header("User-Agent", "Tbans Velocity Plugin")
-                            .GET()
-                            .build(),
-                    HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
-                        if (response.statusCode() == 200) {
-                            try {
-                                JsonObject json = GSON.fromJson(response.body(), JsonObject.class);
-                                if (json.get("success").getAsBoolean()) {
-                                    String resolvedName = json.getAsJsonObject("data")
-                                            .getAsJsonObject("player")
-                                            .get("username").getAsString();
-                                    updateNameCache(directUuid, resolvedName);
-                                }
-                            } catch (Exception ignored) {
-                            }
-                        }
-                        return directUuid;
-                    }).exceptionally(ex -> directUuid);
+            // Name lookup for UUIDs happens separately via resolveName()
+            return CompletableFuture.completedFuture(UUID.fromString(name));
         } catch (IllegalArgumentException ignored) {
         }
 
@@ -394,11 +453,28 @@ public class BanManager {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        if (displayNamesFile.exists()) {
+            try (Reader reader = new FileReader(displayNamesFile)) {
+                Map<UUID, String> loaded = GSON.fromJson(reader, new TypeToken<Map<UUID, String>>() {
+                }.getType());
+                if (loaded != null) {
+                    displayNames = new ConcurrentHashMap<>(loaded);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
-    private void saveNames() {
+    private synchronized void saveNames() {
         try (Writer writer = new FileWriter(namesFile)) {
             GSON.toJson(nameToUuid, writer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try (Writer writer = new FileWriter(displayNamesFile)) {
+            GSON.toJson(displayNames, writer);
         } catch (IOException e) {
             e.printStackTrace();
         }

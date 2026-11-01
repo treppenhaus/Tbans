@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import eu.treppi.tbans.util.MessageUtils;
 import eu.treppi.tbans.util.TimeUtils;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -15,6 +16,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
 public class ApiManager {
@@ -169,10 +171,8 @@ public class ApiManager {
                             targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
                         }
 
-                        banManager.banPlayer(uuid, actualAuthor, duration, reason);
-                        String targetName = banManager.getNameFromUuid(uuid);
-                        String authorName = actualAuthor.equals(CONSOLE_UUID) ? author : banManager.getNameFromUuid(actualAuthor);
-                        broadcast("ban", targetName, authorName, timeStr, reason);
+                        BanEvent event = banManager.banPlayer(uuid, actualAuthor, duration, reason);
+                        broadcast("ban", uuid, target, "", actualAuthor, author, timeStr, reason, event.getCode());
 
                         try {
                             sendResponse(exchange, 200,
@@ -230,10 +230,8 @@ public class ApiManager {
                                 .replace("{reason}", reason);
                         targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
 
-                        banManager.kickPlayer(uuid, actualAuthor, reason);
-                        String targetName = banManager.getNameFromUuid(uuid);
-                        String authorName = actualAuthor.equals(CONSOLE_UUID) ? author : banManager.getNameFromUuid(actualAuthor);
-                        broadcast("kick", targetName, authorName, "", reason);
+                        BanEvent event = banManager.kickPlayer(uuid, actualAuthor, reason);
+                        broadcast("kick", uuid, target, "", actualAuthor, author, "", reason, event.getCode());
 
                         try {
                             sendResponse(exchange, 200,
@@ -280,10 +278,8 @@ public class ApiManager {
 
                     banManager.resolveUuid(author).thenAccept(authorUuid -> {
                         UUID actualAuthor = authorUuid != null ? authorUuid : CONSOLE_UUID;
-                        banManager.unbanPlayer(uuid, actualAuthor, reason);
-                        String targetName = banManager.getNameFromUuid(uuid);
-                        String authorName = actualAuthor.equals(CONSOLE_UUID) ? author : banManager.getNameFromUuid(actualAuthor);
-                        broadcast("unban", targetName, authorName, "", reason);
+                        BanEvent event = banManager.unbanPlayer(uuid, actualAuthor, reason);
+                        broadcast("unban", uuid, target, "", actualAuthor, author, "", reason, event.getCode());
 
                         try {
                             sendResponse(exchange, 200,
@@ -330,10 +326,9 @@ public class ApiManager {
 
                 if (target.matches("^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}$")) {
                     String hash = ipLogManager.hashIp(target, configManager.getSalt());
-                    banManager.banIp(hash, actualAuthor, duration, reason);
+                    BanEvent event = banManager.banIp(hash, actualAuthor, duration, reason);
                     kickByIpHash(hash, timeStr, reason);
-                    String authorName = actualAuthor.equals(CONSOLE_UUID) ? author : banManager.getNameFromUuid(actualAuthor);
-                    broadcast("ban", target + " (IP)", authorName, timeStr, reason);
+                    broadcast("ban", null, target, " (IP)", actualAuthor, author, timeStr, reason, event.getCode());
                     try {
                         sendResponse(exchange, 200, Map.of("success", true, "message", "IP banned successfully"));
                     } catch (IOException ignored) {
@@ -365,13 +360,12 @@ public class ApiManager {
                             return;
                         }
 
+                        String code = null;
                         for (String hash : hashes) {
-                            banManager.banIp(hash, actualAuthor, duration, reason);
+                            code = banManager.banIp(hash, actualAuthor, duration, reason).getCode();
                             kickByIpHash(hash, timeStr, reason);
                         }
-                        String targetName = banManager.getNameFromUuid(uuid);
-                        String authorName = actualAuthor.equals(CONSOLE_UUID) ? author : banManager.getNameFromUuid(actualAuthor);
-                        broadcast("ban", targetName + " (IP)", authorName, timeStr, reason);
+                        broadcast("ban", uuid, target, " (IP)", actualAuthor, author, timeStr, reason, code);
                         try {
                             sendResponse(exchange, 200,
                                     Map.of("success", true, "message", "Player IP(s) banned successfully"));
@@ -453,18 +447,35 @@ public class ApiManager {
         }
     }
 
-    private void broadcast(String type, String target, String author, String duration, String reason) {
-        String msg = languageManager.getMessage(type + ".broadcast")
-                .replace("{player}", target)
-                .replace("{executor}", author)
-                .replace("{duration}", duration)
-                .replace("{reason}", reason);
+    /**
+     * Resolves the in-game names of target and author (async, cache -> playerdb -> Mojang),
+     * then broadcasts to staff. Names are hoverable / clickable to copy the UUID.
+     */
+    private void broadcast(String type, UUID targetUuid, String targetFallback, String targetSuffix,
+            UUID authorUuid, String authorFallback, String duration, String reason, String code) {
+        boolean consoleAuthor = authorUuid == null || authorUuid.equals(CONSOLE_UUID);
 
-        for (Player p : server.getAllPlayers()) {
-            if (p.hasPermission("tbans.notify")) {
-                p.sendMessage(mm.deserialize(msg));
+        CompletableFuture<String> targetName = targetUuid != null
+                ? banManager.resolveName(targetUuid)
+                : CompletableFuture.completedFuture(targetFallback);
+        CompletableFuture<String> authorName = consoleAuthor
+                ? CompletableFuture.completedFuture(authorFallback)
+                : banManager.resolveName(authorUuid);
+
+        targetName.thenCombine(authorName, (tName, aName) -> {
+            String msg = MessageUtils.format(languageManager.getMessage(type + ".broadcast"),
+                    tName + targetSuffix, targetUuid, aName, consoleAuthor ? null : authorUuid,
+                    duration, reason, code, configManager, languageManager);
+            for (Player p : server.getAllPlayers()) {
+                if (p.hasPermission("tbans.notify")) {
+                    p.sendMessage(mm.deserialize(msg));
+                }
             }
-        }
+            return null;
+        }).exceptionally(ex -> {
+            ex.printStackTrace();
+            return null;
+        });
     }
 
     private Map<String, Object> formatAlts(Map<UUID, Long> alts) {

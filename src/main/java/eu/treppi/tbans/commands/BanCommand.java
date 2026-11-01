@@ -152,18 +152,20 @@ public class BanCommand implements SimpleCommand {
             targetPlayer.get().disconnect(mm.deserialize(disconnectMsg));
         }
 
-        String resolvedTargetName = banManager.getNameFromUuid(targetUuid);
-        String successMsg = MessageUtils.format(languageManager.getMessage("ban.success"), resolvedTargetName, null, timeStr,
-                reason, event.getCode(), configManager);
-        source.sendMessage(mm.deserialize(successMsg));
+        banManager.resolveName(targetUuid).thenAccept(resolvedTargetName -> {
+            String successMsg = MessageUtils.format(languageManager.getMessage("ban.success"), resolvedTargetName,
+                    targetUuid, null, null, timeStr, reason, event.getCode(), configManager, languageManager);
+            source.sendMessage(mm.deserialize(successMsg));
 
-        String broadcastMsg = MessageUtils.format(languageManager.getMessage("ban.broadcast"), resolvedTargetName, bannerName,
-                timeStr, reason, event.getCode(), configManager);
-        for (Player p : server.getAllPlayers()) {
-            if (p.hasPermission("tbans.notify")) {
-                p.sendMessage(mm.deserialize(broadcastMsg));
+            String broadcastMsg = MessageUtils.format(languageManager.getMessage("ban.broadcast"), resolvedTargetName,
+                    targetUuid, bannerName, bannerUuid, timeStr, reason, event.getCode(), configManager,
+                    languageManager);
+            for (Player p : server.getAllPlayers()) {
+                if (p.hasPermission("tbans.notify")) {
+                    p.sendMessage(mm.deserialize(broadcastMsg));
+                }
             }
-        }
+        });
     }
 
     @Override

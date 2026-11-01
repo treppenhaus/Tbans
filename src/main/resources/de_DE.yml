@@ -1,5 +1,6 @@
 prefix: "<gradient:#8bb0f5:#f58be8><b>TBans</b></gradient> <#af86b3>»</#af86b3> "
 no_permission: "{prefix}<#ff7396>Du hast keine Rechte für diesen Befehl!</#ff7396>"
+player_hover: "<#af86b3>UUID: <#8af0e6>{uuid}</#8af0e6>\n<#d58af0>Klicken zum Kopieren</#d58af0></#af86b3>"
 
 ban:
   usage: "{prefix}<#ff7396>Verwendung: /ban <Spieler> <Zeit> <Grund></#ff7396>"
