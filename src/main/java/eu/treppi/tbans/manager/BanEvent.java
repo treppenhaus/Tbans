@@ -26,27 +26,12 @@ public class BanEvent {
         this.timestamp = timestamp;
         this.expiry = expiry;
         this.reason = reason;
-        this.code = (code == null && type == Type.BAN) ? generateCode() : code;
-    }
-
-    public void ensureCode() {
-        if (this.code == null && type == Type.BAN) {
-            this.code = generateCode();
-        }
+        // Ban codes are assigned by BanManager, which guarantees uniqueness
+        this.code = code;
     }
 
     public void setCode(String code) {
         this.code = code;
-    }
-
-    private String generateCode() {
-        String chars = "0123456789ABCDEF";
-        StringBuilder sb = new StringBuilder();
-        java.util.Random random = new java.util.Random();
-        for (int i = 0; i < 6; i++) {
-            sb.append(chars.charAt(random.nextInt(chars.length())));
-        }
-        return sb.toString();
     }
 
     public Type getType() {

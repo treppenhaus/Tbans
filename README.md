@@ -58,11 +58,31 @@ If MongoDB can't be reached on startup or reload, TBans logs an error and falls 
 
 `/tbans migrate mongodb json` works the other way round, e.g. for a backup. Both require `tbans.admin`.
 
+## Ban Codes
+
+Every ban gets a unique **ban code** (ban ID). It is shown to the player on the ban / login-denied screen
+and in staff broadcasts, and can be used with `/history <code>` or the APIs to look the ban up.
+
+- **Format:** 8 characters from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (no `0`, `O`, `1` or `I`, so they can't be confused), e.g. `K7QX2M9P`.
+- **Strength:** 32⁸ ≈ 1.1 trillion possible codes, generated with `SecureRandom`, and checked to be unique across all player and IP bans, including expired ones.
+- **Input:** case-insensitive; spaces and dashes are ignored (`k7qx-2m9p` works too).
+- **Old bans:** bans created before this format keep their 6 character hex code (e.g. `3FA09C`), which still works everywhere.
+
+The ban screens use the `{ban_code}` placeholder. If you customised your language files before
+it was added to `de_DE.yml`, add it to `ban.disconnect_screen` and `ban.login_denied` yourself.
+
 ## JSON API
 
 TBans features a minimalistic JSON API for external integrations, allowing you to manage bans, kicks, and view player history or linked accounts remotely.
 
 **Detailed documentation can be found here: [API.md](API.md)**
+
+## Java API
+
+Other Velocity plugins on the same proxy can query bans directly through a native, thread-safe Java API,
+e.g. to look up a ban by its code or check whether a player is banned.
+
+**Setup and examples: [JAVA_API.md](JAVA_API.md)**
 
 ## Additional Permissions
 

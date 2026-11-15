@@ -2,6 +2,8 @@
 
 TBans features a minimalistic JSON API for external integrations. Authentication is required via a Bearer Token.
 
+> Plugins running on the same Velocity proxy can use the native [Java API](JAVA_API.md) instead, without HTTP or a token.
+
 ## Authentication
 All requests must include the `Authorization` header with a Bearer Token.
 ```http
@@ -41,6 +43,7 @@ Returns potential secondary accounts linked via IP hashing.
 Returns the full history of bans, unbans, and kicks for a player or a specific ban code.
 
 - **URL:** `/api/history/<player_name_or_uuid_or_code>`
+- Ban codes are case-insensitive. See [Ban Codes](README.md#ban-codes) for the format.
 - **Method:** `GET`
 - **Success Response (200 OK) - Player Lookup:**
   *Returned if the target is a Player Name, UUID, or a Ban Code associated with a player.*
@@ -57,7 +60,7 @@ Returns the full history of bans, unbans, and kicks for a player or a specific b
       "timestamp": 1620000000000,
       "expiry": -1,
       "reason": "Example Reason",
-      "code": "A1B2C3"
+      "code": "K7QX2M9P"
     }
   ]
 }
@@ -76,7 +79,7 @@ Returns the full history of bans, unbans, and kicks for a player or a specific b
       "timestamp": 1620000000000,
       "expiry": -1,
       "reason": "Example IP Ban",
-      "code": "D4E5F6"
+      "code": "R4NB8WTE"
     }
   ]
 }

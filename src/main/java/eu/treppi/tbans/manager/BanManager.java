@@ -3,12 +3,14 @@ package eu.treppi.tbans.manager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import eu.treppi.tbans.api.BanCodes;
 import eu.treppi.tbans.storage.Storage;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,9 +28,13 @@ public class BanManager {
     private Map<UUID, String> uuidToName = new HashMap<>();
     // Correctly-cased names (names.json only stores lowercased names)
     private Map<UUID, String> displayNames = new ConcurrentHashMap<>();
+    // Normalized ban code -> owner, for O(1) code lookups and uniqueness checks.
+    // Guarded by "this" like playerEvents / ipEvents.
+    private final Map<String, CodeEntry> codeIndex = new HashMap<>();
     private Storage storage;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+    private static final SecureRandom CODE_RANDOM = new SecureRandom();
 
     public BanManager(Storage storage) {
         setStorage(storage);
@@ -37,12 +43,13 @@ public class BanManager {
     /** Switches the storage backend and reloads all data from it. */
     public synchronized void setStorage(Storage storage) {
         this.storage = storage;
-        loadBans();
-        loadIpBans();
+        playerEvents = storage.loadPlayerEvents();
+        ipEvents = storage.loadIpEvents();
+        rebuildCodeIndex();
         loadNames();
     }
 
-    public BanEvent banPlayer(UUID target, UUID executor, long durationMillis, String reason) {
+    public synchronized BanEvent banPlayer(UUID target, UUID executor, long durationMillis, String reason) {
         long timestamp = System.currentTimeMillis();
         long expiry = (durationMillis == -1) ? -1 : (timestamp + durationMillis);
         String code = generateUniqueCode();
@@ -51,14 +58,14 @@ public class BanManager {
         return event;
     }
 
-    public BanEvent unbanPlayer(UUID target, UUID executor, String reason) {
+    public synchronized BanEvent unbanPlayer(UUID target, UUID executor, String reason) {
         long timestamp = System.currentTimeMillis();
         BanEvent event = new BanEvent(BanEvent.Type.UNBAN, target, executor, timestamp, -1, reason);
         addEvent(target, event);
         return event;
     }
 
-    public BanEvent kickPlayer(UUID target, UUID executor, String reason) {
+    public synchronized BanEvent kickPlayer(UUID target, UUID executor, String reason) {
         long timestamp = System.currentTimeMillis();
         BanEvent event = new BanEvent(BanEvent.Type.KICK, target, executor, timestamp, -1, reason);
         addEvent(target, event);
@@ -68,10 +75,11 @@ public class BanManager {
     private void addEvent(UUID target, BanEvent event) {
         List<BanEvent> events = playerEvents.computeIfAbsent(target, k -> new ArrayList<>());
         events.add(event);
+        indexCode(event, new CodeLookupResult(CodeLookupResult.Type.UUID, target.toString()));
         storage.savePlayerEvents(target, events, playerEvents);
     }
 
-    public BanEvent banIp(String ipHash, UUID executor, long durationMillis, String reason) {
+    public synchronized BanEvent banIp(String ipHash, UUID executor, long durationMillis, String reason) {
         long timestamp = System.currentTimeMillis();
         long expiry = (durationMillis == -1) ? -1 : (timestamp + durationMillis);
         String code = generateUniqueCode();
@@ -80,7 +88,7 @@ public class BanManager {
         return event;
     }
 
-    public BanEvent unbanIp(String ipHash, UUID executor, String reason) {
+    public synchronized BanEvent unbanIp(String ipHash, UUID executor, String reason) {
         long timestamp = System.currentTimeMillis();
         BanEvent event = new BanEvent(BanEvent.Type.UNBAN, null, executor, timestamp, -1, reason);
         addIpEvent(ipHash, event);
@@ -90,24 +98,33 @@ public class BanManager {
     private void addIpEvent(String ipHash, BanEvent event) {
         List<BanEvent> events = ipEvents.computeIfAbsent(ipHash, k -> new ArrayList<>());
         events.add(event);
+        indexCode(event, new CodeLookupResult(CodeLookupResult.Type.IP_HASH, ipHash));
         storage.saveIpEvents(ipHash, events, ipEvents);
     }
 
-    public boolean isIpBanned(String ipHash) {
-        BanEvent latest = getLatestIpBan(ipHash);
-        if (latest == null)
-            return false;
-
-        if (latest.getExpiry() == -1)
-            return true;
-        return latest.getExpiry() > System.currentTimeMillis();
+    public synchronized boolean isIpBanned(String ipHash) {
+        return isInForce(getLatestIpBan(ipHash));
     }
 
-    public BanEvent getLatestIpBan(String ipHash) {
-        if (!ipEvents.containsKey(ipHash))
-            return null;
+    public synchronized BanEvent getLatestIpBan(String ipHash) {
+        return latestBanIn(ipEvents.get(ipHash));
+    }
 
-        List<BanEvent> events = ipEvents.get(ipHash);
+    public synchronized boolean isBanned(UUID uuid) {
+        return isInForce(getLatestBan(uuid));
+    }
+
+    public synchronized BanEvent getLatestBan(UUID uuid) {
+        return latestBanIn(playerEvents.get(uuid));
+    }
+
+    /**
+     * Returns the newest BAN in a history unless an UNBAN came after it. KICKs are ignored.
+     * The returned ban may be expired; see {@link #isInForce(BanEvent)}.
+     */
+    private static BanEvent latestBanIn(List<BanEvent> events) {
+        if (events == null)
+            return null;
         for (int i = events.size() - 1; i >= 0; i--) {
             BanEvent event = events.get(i);
             if (event.getType() == BanEvent.Type.BAN)
@@ -118,33 +135,26 @@ public class BanManager {
         return null;
     }
 
-    public boolean isBanned(UUID uuid) {
-        BanEvent latest = getLatestBan(uuid);
-        if (latest == null)
+    private static boolean isInForce(BanEvent ban) {
+        if (ban == null)
             return false;
-
-        if (latest.getExpiry() == -1)
-            return true;
-        return latest.getExpiry() > System.currentTimeMillis();
+        return ban.getExpiry() == -1 || ban.getExpiry() > System.currentTimeMillis();
     }
 
-    public BanEvent getLatestBan(UUID uuid) {
-        if (!playerEvents.containsKey(uuid))
-            return null;
-
-        List<BanEvent> events = playerEvents.get(uuid);
-        for (int i = events.size() - 1; i >= 0; i--) {
-            BanEvent event = events.get(i);
-            if (event.getType() == BanEvent.Type.BAN)
-                return event;
-            if (event.getType() == BanEvent.Type.UNBAN)
-                return null;
-            // Ignore KICK
-        }
-        return null;
+    /**
+     * Whether this exact ban is the one currently in force for its owner (not expired, not lifted
+     * and not superseded by a newer ban).
+     */
+    public synchronized boolean isActiveBan(BanEvent ban, CodeLookupResult owner) {
+        if (ban == null || owner == null)
+            return false;
+        BanEvent latest = owner.type == CodeLookupResult.Type.UUID
+                ? latestBanIn(playerEvents.get(UUID.fromString(owner.value)))
+                : latestBanIn(ipEvents.get(owner.value));
+        return latest == ban && isInForce(ban);
     }
 
-    public List<BanEvent> getEventsByExecutor(UUID executorUuid) {
+    public synchronized List<BanEvent> getEventsByExecutor(UUID executorUuid) {
         List<BanEvent> events = new ArrayList<>();
         for (List<BanEvent> playerHistory : playerEvents.values()) {
             for (BanEvent event : playerHistory) {
@@ -156,22 +166,9 @@ public class BanManager {
         return events;
     }
 
-    public boolean isCodeInUse(String code) {
-        if (code == null)
-            return false;
-        for (List<BanEvent> history : playerEvents.values()) {
-            for (BanEvent event : history) {
-                if (code.equalsIgnoreCase(event.getCode()))
-                    return true;
-            }
-        }
-        for (List<BanEvent> history : ipEvents.values()) {
-            for (BanEvent event : history) {
-                if (code.equalsIgnoreCase(event.getCode()))
-                    return true;
-            }
-        }
-        return false;
+    public synchronized boolean isCodeInUse(String code) {
+        String normalized = BanCodes.normalize(code);
+        return normalized != null && codeIndex.containsKey(normalized);
     }
 
     public static class CodeLookupResult {
@@ -188,54 +185,92 @@ public class BanManager {
         }
     }
 
-    public CodeLookupResult lookupByCode(String code) {
-        if (code == null)
-            return null;
-        for (Map.Entry<UUID, List<BanEvent>> entry : playerEvents.entrySet()) {
-            for (BanEvent event : entry.getValue()) {
-                if (code.equalsIgnoreCase(event.getCode())) {
-                    return new CodeLookupResult(CodeLookupResult.Type.UUID, entry.getKey().toString());
-                }
-            }
-        }
-        for (Map.Entry<String, List<BanEvent>> entry : ipEvents.entrySet()) {
-            for (BanEvent event : entry.getValue()) {
-                if (code.equalsIgnoreCase(event.getCode())) {
-                    return new CodeLookupResult(CodeLookupResult.Type.IP_HASH, entry.getKey());
-                }
-            }
-        }
-        return null;
+    /** A ban together with the player / IP hash it belongs to. */
+    public record CodeEntry(CodeLookupResult owner, BanEvent ban) {
     }
 
-    public List<BanEvent> getEvents(UUID uuid) {
+    /** Finds the owner of a ban code (case-insensitive, spaces / dashes ignored), or null. */
+    public synchronized CodeLookupResult lookupByCode(String code) {
+        CodeEntry entry = findByCode(code);
+        return entry == null ? null : entry.owner();
+    }
+
+    /** Finds the ban with this code and its owner (case-insensitive, spaces / dashes ignored), or null. */
+    public synchronized CodeEntry findByCode(String code) {
+        String normalized = BanCodes.normalize(code);
+        return normalized == null ? null : codeIndex.get(normalized);
+    }
+
+    /** @return a copy of the player's history, oldest first */
+    public synchronized List<BanEvent> getEvents(UUID uuid) {
         if (uuid == null)
             return new ArrayList<>();
-        return playerEvents.getOrDefault(uuid, new ArrayList<>());
+        return new ArrayList<>(playerEvents.getOrDefault(uuid, List.of()));
     }
 
-    public List<BanEvent> getIpEvents(String ipHash) {
+    /** @return a copy of the IP hash's history, oldest first */
+    public synchronized List<BanEvent> getIpEvents(String ipHash) {
         if (ipHash == null)
             return new ArrayList<>();
-        return ipEvents.getOrDefault(ipHash, new ArrayList<>());
+        return new ArrayList<>(ipEvents.getOrDefault(ipHash, List.of()));
     }
 
+    /** Generates a new random ban code that no existing ban uses. Caller must hold the lock. */
     private String generateUniqueCode() {
-        String chars = "0123456789ABCDEF";
-        java.util.Random random = new java.util.Random();
+        char[] chars = new char[BanCodes.LENGTH];
         String code;
         do {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < 6; i++) {
-                sb.append(chars.charAt(random.nextInt(chars.length())));
+            for (int i = 0; i < chars.length; i++) {
+                chars[i] = BanCodes.ALPHABET.charAt(CODE_RANDOM.nextInt(BanCodes.ALPHABET.length()));
             }
-            code = sb.toString();
-        } while (isCodeInUse(code));
+            code = new String(chars);
+        } while (codeIndex.containsKey(code));
         return code;
     }
 
-    public Map<UUID, List<BanEvent>> getAllEvents() {
-        return playerEvents;
+    private void indexCode(BanEvent event, CodeLookupResult owner) {
+        if (event.getCode() != null) {
+            codeIndex.put(BanCodes.normalize(event.getCode()), new CodeEntry(owner, event));
+        }
+    }
+
+    /**
+     * Rebuilds the code index from the loaded histories. Bans stored without a code (very old data)
+     * get a new one, which is saved so it stays the same across restarts.
+     */
+    private void rebuildCodeIndex() {
+        codeIndex.clear();
+        playerEvents.forEach((uuid, events) -> {
+            CodeLookupResult owner = new CodeLookupResult(CodeLookupResult.Type.UUID, uuid.toString());
+            events.forEach(event -> indexCode(event, owner));
+        });
+        ipEvents.forEach((hash, events) -> {
+            CodeLookupResult owner = new CodeLookupResult(CodeLookupResult.Type.IP_HASH, hash);
+            events.forEach(event -> indexCode(event, owner));
+        });
+
+        playerEvents.forEach((uuid, events) -> {
+            if (assignMissingCodes(events, new CodeLookupResult(CodeLookupResult.Type.UUID, uuid.toString()))) {
+                storage.savePlayerEvents(uuid, events, playerEvents);
+            }
+        });
+        ipEvents.forEach((hash, events) -> {
+            if (assignMissingCodes(events, new CodeLookupResult(CodeLookupResult.Type.IP_HASH, hash))) {
+                storage.saveIpEvents(hash, events, ipEvents);
+            }
+        });
+    }
+
+    private boolean assignMissingCodes(List<BanEvent> events, CodeLookupResult owner) {
+        boolean changed = false;
+        for (BanEvent event : events) {
+            if (event.getType() == BanEvent.Type.BAN && event.getCode() == null) {
+                event.setCode(generateUniqueCode());
+                indexCode(event, owner);
+                changed = true;
+            }
+        }
+        return changed;
     }
 
     // Name Resolution Cache
@@ -387,7 +422,7 @@ public class BanManager {
                 }).exceptionally(ex -> null);
     }
 
-    public List<String> getBannedNames() {
+    public synchronized List<String> getBannedNames() {
         return playerEvents.keySet().stream()
                 .filter(this::isBanned)
                 .map(uuid -> uuidToName.getOrDefault(uuid, uuid.toString()))
@@ -398,21 +433,6 @@ public class BanManager {
         return new ArrayList<>(nameToUuid.keySet());
     }
 
-    private void loadBans() {
-        playerEvents = storage.loadPlayerEvents();
-        migrateCodes(playerEvents);
-    }
-
-    private <T> void migrateCodes(Map<T, List<BanEvent>> eventsMap) {
-        for (List<BanEvent> events : eventsMap.values()) {
-            for (BanEvent event : events) {
-                if (event.getType() == BanEvent.Type.BAN && event.getCode() == null) {
-                    event.setCode(generateUniqueCode());
-                }
-            }
-        }
-    }
-
     private void loadNames() {
         nameToUuid = storage.loadNameIndex();
         uuidToName = new HashMap<>();
@@ -420,10 +440,5 @@ public class BanManager {
             uuidToName.put(entry.getValue(), entry.getKey());
         }
         displayNames = new ConcurrentHashMap<>(storage.loadDisplayNames());
-    }
-
-    private void loadIpBans() {
-        ipEvents = storage.loadIpEvents();
-        migrateCodes(ipEvents);
     }
 }

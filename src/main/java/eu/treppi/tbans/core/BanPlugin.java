@@ -19,6 +19,7 @@ import eu.treppi.tbans.manager.ConfigManager;
 import eu.treppi.tbans.manager.IpLogManager;
 import eu.treppi.tbans.manager.LanguageManager;
 import eu.treppi.tbans.manager.ApiManager;
+import eu.treppi.tbans.api.TbansProvider;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import eu.treppi.tbans.storage.Storage;
 import eu.treppi.tbans.storage.StorageData;
@@ -62,6 +63,9 @@ public class BanPlugin {
                 this.banManager = new BanManager(storage);
                 this.ipLogManager = new IpLogManager(storage);
                 this.apiManager = new ApiManager(server, banManager, languageManager, configManager, ipLogManager);
+                // Registered in the constructor: Velocity constructs plugins in dependency order, so
+                // plugins depending on "tbans" can use the API from their own constructor onwards.
+                TbansProvider.register(new TbansApiImpl(banManager));
                 loadVersionInfo();
         }
 
@@ -177,6 +181,7 @@ public class BanPlugin {
 
         @Subscribe
         public void onProxyShutdown(ProxyShutdownEvent event) {
+                TbansProvider.register(null);
                 apiManager.stop();
                 storage.close();
                 logger.info("TBans has been disabled!");
